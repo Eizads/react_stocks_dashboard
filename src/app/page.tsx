@@ -15,7 +15,7 @@ export default function Home() {
          Welcome to<br />
           Stocks Dashboard
            </h1>
-           <p className="mt-6 text-2xl">
+           <p className="mt-6 text-3xl">
              Your one-stop solution for stock market analysis
            </p>
          </div>
