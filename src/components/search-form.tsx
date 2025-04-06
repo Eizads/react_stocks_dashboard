@@ -2,6 +2,7 @@
 
 import { Search } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 
 import { useDebounce } from "@/hooks/use-debounce"
 import axios from "axios"
@@ -9,7 +10,13 @@ import { cn } from "@/lib/utils"
 
 import { StockSearchResult, SearchResponse } from "@/types/search"
 
-export function SearchForm({ className }: { className?: string }) {
+interface SearchFormProps {
+  className?: string
+  onSelect?: () => void
+}
+
+export function SearchForm({ className, onSelect }: SearchFormProps) {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [results, setResults] = useState<StockSearchResult[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -42,6 +49,13 @@ export function SearchForm({ className }: { className?: string }) {
     fetchStocks()
   }, [debouncedSearchQuery])
 
+  const handleStockClick = (symbol: string) => {
+    setSearchQuery("")
+    setResults([])
+    onSelect?.()
+    router.push(`/stocks/${symbol}`)
+  }
+
   return (
     <div className={cn("relative", className)}>
       <div className="relative">
@@ -65,20 +79,23 @@ export function SearchForm({ className }: { className?: string }) {
           ) : (
             <div className="divide-y">
               {results.map((stock) => (
-                <div
+                <button
                   key={`${stock.symbol}-${stock.exchange}`}
-                  className="flex items-center justify-between p-4 hover:bg-accent"
+                  onClick={() => handleStockClick(stock.symbol)}
+                  className="block w-full text-left hover:bg-accent"
                 >
-                  <div>
-                    <div className="font-medium">{stock.symbol}</div>
+                  <div className="flex items-center justify-between p-4">
+                    <div>
+                      <div className="font-medium">{stock.symbol}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {stock.instrument_name}
+                      </div>
+                    </div>
                     <div className="text-sm text-muted-foreground">
-                      {stock.instrument_name}
+                      {stock.exchange}
                     </div>
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {stock.exchange}
-                  </div>
-                </div>
+                </button>
               ))}
             </div>
           )}

@@ -19,10 +19,11 @@ import {
   SheetDescription,
   SheetTrigger,
 } from "@/components/ui/sheet"
+import { useState } from "react"
 
 export function SiteHeader() {
   const { toggleSidebar } = useSidebar()
-
+  const [isOpen, setIsOpen] = useState(false)
   return (
     <header className="bg-background sticky top-0 z-50 flex w-full items-center border-b">
       <div className="flex h-(--header-height) w-full items-center gap-2 px-4">
@@ -43,9 +44,9 @@ export function SiteHeader() {
           </BreadcrumbItem>
         </Breadcrumb>
         <div className="ml-auto">
-          <Sheet>
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)}>
                 <Search className="h-4 w-4" />
                 <span className="sr-only">Search</span>
               </Button>
@@ -61,7 +62,7 @@ export function SiteHeader() {
                 </SheetDescription>
               </SheetHeader>
               <div className="w-full max-w-6xl px-4">
-                <SearchForm className="w-full" />
+                <SearchForm className="w-full" onSelect={() => setIsOpen(false)} />
               </div>
             </SheetContent>
           </Sheet>
