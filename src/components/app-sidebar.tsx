@@ -1,188 +1,112 @@
 "use client"
 
-import * as React from "react"
-import {
-  BookOpen,
-  Bot,
-  Command,
-  Frame,
-  LifeBuoy,
-  Map,
-  PieChart,
-  Send,
-  Settings2,
-  SquareTerminal,
-} from "lucide-react"
+import { useState } from "react"
+import { Home, Minus } from "lucide-react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 
-// import { NavMain } from "@/components/nav-main"
-// import { NavProjects } from "@/components/nav-projects"
-// import { NavSecondary } from "@/components/nav-secondary"
-import { NavUser } from "@/components/nav-user"
+import { cn } from "@/lib/utils"
+import { AddStockDialog } from "@/components/add-stock-dialog"
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { StockSearchResult } from "@/types/search"
+import { Button } from "@/components/ui/button"
 
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  navMain: [
-    {
-      title: "Playground",
-      url: "#",
-      icon: SquareTerminal,
-      isActive: true,
-      items: [
-        {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Models",
-      url: "#",
-      icon: Bot,
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: BookOpen,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Support",
-      url: "#",
-      icon: LifeBuoy,
-    },
-    {
-      title: "Feedback",
-      url: "#",
-      icon: Send,
-    },
-  ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: Frame,
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
-    },
-  ],
+interface WatchlistItem {
+  symbol: string
+  exchange: string
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar() {
+  const pathname = usePathname()
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
+
+  const toggleStock = (stock: StockSearchResult | WatchlistItem) => {
+    setWatchlist((prev) => {
+      
+      const exists = prev.some(
+        (item) => item.symbol === stock.symbol && item.exchange === stock.exchange
+      )
+      if (exists) {
+        return prev.filter(
+          (item) => !(item.symbol === stock.symbol && item.exchange === stock.exchange)
+        )
+      }
+      return [...prev, { symbol: stock.symbol, exchange: stock.exchange }]
+    })
+  }
+
   return (
     <Sidebar
       className="top-(--header-height) h-[calc(100svh-var(--header-height))]!"
-      {...props}
     >
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <a href="#">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <Command className="size-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">Acme Inc</span>
-                  <span className="truncate text-xs">Enterprise</span>
-                </div>
-              </a>
+              <div className="flex items-center justify-between gap-2">
+                <Link
+                  href="/"
+                  className={cn(
+                    "flex items-center gap-2 text-lg font-semibold",
+                    pathname === "/" && "text-primary"
+                  )}
+                >
+                  <Home className="h-6 w-6" />
+                  <span className="hidden lg:inline-block">Dashboard</span>
+                </Link>
+                <AddStockDialog onToggleStock={toggleStock} watchlist={watchlist} />
+              </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        {/* <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
+        <SidebarMenu>
+          <div>
+            <SidebarMenuItem>
+              <SidebarMenuButton size="lg">
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-medium">Watchlist</span>
+                </div>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <div className="pl-4">
+              {watchlist.map((item) => (
+                <SidebarMenuItem key={`${item.symbol}-${item.exchange}`}>
+                  <div className="flex items-center justify-between w-full">
+                    <SidebarMenuButton asChild className="flex-1">
+                      <Link href={`/stocks/${item.symbol}-${item.exchange}`}>
+                        <div className="flex items-center gap-2">
+                          <span>{item.symbol}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {item.exchange}
+                          </span>
+                        </div>
+                      </Link>
+                    </SidebarMenuButton>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full"
+                      onClick={() => toggleStock(item)}
+                    >
+                      <Minus className="h-4 w-4" />
+                      <span className="sr-only">Remove stock</span>
+                    </Button>
+                  </div>
+                </SidebarMenuItem>
+              ))}
+            </div>
+          </div>
+        </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={data.user} />
-      </SidebarFooter>
     </Sidebar>
   )
 }

@@ -12,7 +12,7 @@ import { StockSearchResult, SearchResponse } from "@/types/search"
 
 interface SearchFormProps {
   className?: string
-  onSelect?: () => void
+  onSelect?: (stock: StockSearchResult) => void
 }
 
 export function SearchForm({ className, onSelect }: SearchFormProps) {
@@ -49,11 +49,11 @@ export function SearchForm({ className, onSelect }: SearchFormProps) {
     fetchStocks()
   }, [debouncedSearchQuery])
 
-  const handleStockClick = (symbol: string) => {
+  const handleStockClick = (stock: StockSearchResult) => {
     setSearchQuery("")
     setResults([])
-    onSelect?.()
-    router.push(`/stocks/${symbol}`)
+    onSelect?.(stock)
+    router.push(`/stocks/${stock.symbol}-${stock.exchange}`)
   }
 
   return (
@@ -81,7 +81,7 @@ export function SearchForm({ className, onSelect }: SearchFormProps) {
               {results.map((stock) => (
                 <button
                   key={`${stock.symbol}-${stock.exchange}`}
-                  onClick={() => handleStockClick(stock.symbol)}
+                  onClick={() => handleStockClick(stock)}
                   className="block w-full text-left hover:bg-accent"
                 >
                   <div className="flex items-center justify-between p-4">
