@@ -46,9 +46,44 @@ export function StockChart({ data, livePrice, title = "Stock Price" }: StockChar
   useEffect(() => {
     if (livePrice && chartRef.current) {
       const chart = chartRef.current
-      const lastIndex = chart.data.datasets[0].data.length - 1
-      chart.data.datasets[0].data[lastIndex] = livePrice
-      chart.update()
+      const now = new Date()
+      const currentTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      
+      console.log('Live update:', {
+        currentTime,
+        livePrice,
+        availableLabels: chart.data.labels?.slice(0, 5) // Log first 5 labels for debugging
+      })
+
+      // Find the index in our fixed time points array that matches the current time
+      const timeIndex = chart.data.labels?.findIndex((value: unknown) => {
+        const label = value as string
+        console.log('Comparing times:', {
+          label,
+          currentTime,
+          match: label === currentTime
+        })
+        return label === currentTime
+      })
+
+      console.log('Found time index:', timeIndex)
+
+      // If we found a matching time slot, update the price
+      if (timeIndex !== -1 && timeIndex !== undefined && chart.data.datasets[0].data) {
+        console.log('Updating price at index:', timeIndex, 'with value:', livePrice)
+        // Ensure we're working with numbers
+        const data = chart.data.datasets[0].data as number[]
+        data[timeIndex] = Number(livePrice)
+        
+        // Clear all prices after the current time point
+        for (let i = timeIndex + 1; i < data.length; i++) {
+          data[i] = NaN
+        }
+        
+        chart.update('none') // Use 'none' to prevent animation
+      } else {
+        console.log('No matching time slot found for current time')
+      }
     }
   }, [livePrice])
 
@@ -70,11 +105,12 @@ export function StockChart({ data, livePrice, title = "Stock Price" }: StockChar
     datasets: [
       {
         label: "Price",
-        data: data.values,
+        data: data.values.map(value => Number(value)), // Ensure all values are numbers
         borderColor: "rgb(75, 192, 192)",
         tension: 0.1,
         pointRadius: 0,
         borderWidth: 2,
+        spanGaps: true
       },
     ],
   }
@@ -118,7 +154,7 @@ export function StockChart({ data, livePrice, title = "Stock Price" }: StockChar
           maxRotation: 0,
           autoSkip: true,
           maxTicksLimit: 6
-        },
+        }
       },
       y: {
         grid: {

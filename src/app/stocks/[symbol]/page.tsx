@@ -113,19 +113,44 @@ export default function StockPage() {
     }
   })
 
-  // Reverse the arrays since the most recent data point is at index 0
+  // Create array of time points from 9:30 AM to 4:00 PM in 1-minute intervals
+  const timePoints = []
+  const startTime = 9 * 60 + 30 // 9:30 AM in minutes
+  const endTime = 16 * 60 // 4:00 PM in minutes
+  
+  for (let minutes = startTime; minutes <= endTime; minutes++) {
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    const date = new Date()
+    date.setHours(hours, mins, 0, 0)
+    timePoints.push(date.toISOString())
+  }
+
+  // Create a map of timestamp to price for quick lookup
+  const priceMap = new Map(
+    filteredTimeSeries.map(point => [point.timestamp, point.price])
+  )
+
+  // Map the time points to their corresponding prices
   const chartData = {
-    labels: [...filteredTimeSeries].reverse().map(point => point.timestamp),
-    values: [...filteredTimeSeries].reverse().map(point => point.price),
+    labels: timePoints,
+    values: timePoints.map(timestamp => {
+      // Find the closest price point
+      const apiTimestamp = [...priceMap.keys()].reduce((closest, current) => {
+        const currentDiff = Math.abs(new Date(current).getTime() - new Date(timestamp).getTime())
+        const closestDiff = Math.abs(new Date(closest).getTime() - new Date(timestamp).getTime())
+        return currentDiff < closestDiff ? current : closest
+      })
+      // If no price found, use the last known price
+      return priceMap.get(apiTimestamp) ?? stockData.price
+    })
   }
   
-  console.log('Filtered Chart Data:', {
-    isWeekend,
-    marketStatus,
-    currentDay,
+  console.log('Chart Data:', {
+    timePoints: timePoints.length,
     dataPoints: filteredTimeSeries.length,
-    firstPoint: filteredTimeSeries[filteredTimeSeries.length - 1]?.timestamp, // Most recent point
-    lastPoint: filteredTimeSeries[0]?.timestamp // Oldest point
+    firstTime: timePoints[0],
+    lastTime: timePoints[timePoints.length - 1]
   })
 
   // Use live price if available, otherwise use the last known price
