@@ -62,7 +62,11 @@ export function SiteHeader() {
                 </SheetDescription>
               </SheetHeader>
               <div className="w-full max-w-6xl px-4">
-                <SearchForm className="w-full" onSelect={() => setIsOpen(false)} />
+                <SearchForm 
+                  className="w-full" 
+                  onSelect={() => setIsOpen(false)}
+                  navigateOnSelect={true}
+                />
               </div>
             </SheetContent>
           </Sheet>

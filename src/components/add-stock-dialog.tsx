@@ -15,18 +15,17 @@ import {
 import { SearchForm } from "@/components/search-form"
 import { StockSearchResult } from "@/types/search"
 
-interface WatchlistItem {
-  symbol: string
-  exchange: string
-}
-
 interface AddStockDialogProps {
   onToggleStock: (stock: StockSearchResult) => void
-  watchlist: WatchlistItem[]
 }
 
-export function AddStockDialog({ onToggleStock, watchlist }: AddStockDialogProps) {
+export function AddStockDialog({ onToggleStock }: AddStockDialogProps) {
   const [open, setOpen] = useState(false)
+
+  const handleSelect = (stock: StockSearchResult) => {
+    onToggleStock(stock)
+    setOpen(false)
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -49,8 +48,7 @@ export function AddStockDialog({ onToggleStock, watchlist }: AddStockDialogProps
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <SearchForm 
-            onSelect={onToggleStock}
-            watchlist={watchlist}
+            onSelect={handleSelect}
           />
         </div>
       </DialogContent>

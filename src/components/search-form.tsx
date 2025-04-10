@@ -13,9 +13,10 @@ import { StockSearchResult, SearchResponse } from "@/types/search"
 interface SearchFormProps {
   className?: string
   onSelect?: (stock: StockSearchResult) => void
+  navigateOnSelect?: boolean
 }
 
-export function SearchForm({ className, onSelect }: SearchFormProps) {
+export function SearchForm({ className, onSelect, navigateOnSelect = false }: SearchFormProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [results, setResults] = useState<StockSearchResult[]>([])
@@ -53,7 +54,9 @@ export function SearchForm({ className, onSelect }: SearchFormProps) {
     setSearchQuery("")
     setResults([])
     onSelect?.(stock)
-    router.push(`/stocks/${stock.symbol}-${stock.exchange}`)
+    if (navigateOnSelect) {
+      router.push(`/stocks/${stock.symbol}-${stock.exchange}`)
+    }
   }
 
   return (

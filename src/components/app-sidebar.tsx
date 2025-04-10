@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Home, Minus } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -18,6 +18,8 @@ import {
 import { StockSearchResult } from "@/types/search"
 import { Button } from "@/components/ui/button"
 
+const WATCHLIST_STORAGE_KEY = 'stocks-dashboard-watchlist'
+
 interface WatchlistItem {
   symbol: string
   exchange: string
@@ -27,9 +29,26 @@ export function AppSidebar() {
   const pathname = usePathname()
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
 
+  // Load watchlist from localStorage on mount
+  useEffect(() => {
+    const savedWatchlist = localStorage.getItem(WATCHLIST_STORAGE_KEY)
+    if (savedWatchlist) {
+      try {
+        const parsedWatchlist = JSON.parse(savedWatchlist)
+        setWatchlist(parsedWatchlist)
+      } catch (error) {
+        console.error('Failed to parse watchlist from localStorage:', error)
+      }
+    }
+  }, [])
+
+  // Save watchlist to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(watchlist))
+  }, [watchlist])
+
   const toggleStock = (stock: StockSearchResult | WatchlistItem) => {
     setWatchlist((prev) => {
-      
       const exists = prev.some(
         (item) => item.symbol === stock.symbol && item.exchange === stock.exchange
       )
@@ -61,7 +80,7 @@ export function AppSidebar() {
                   <Home className="h-6 w-6" />
                   <span className="hidden lg:inline-block">Dashboard</span>
                 </Link>
-                <AddStockDialog onToggleStock={toggleStock} watchlist={watchlist} />
+                <AddStockDialog onToggleStock={toggleStock} />
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
