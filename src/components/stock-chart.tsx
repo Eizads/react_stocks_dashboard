@@ -32,7 +32,7 @@ ChartJS.register(
 interface StockChartProps {
   data: {
     labels: string[]
-    values: number[]
+    values: (number | null)[]
   }
   livePrice?: number | null
   title?: string
@@ -52,17 +52,12 @@ export function StockChart({ data, livePrice, title = "Stock Price" }: StockChar
       console.log('Live update:', {
         currentTime,
         livePrice,
-        availableLabels: chart.data.labels?.slice(0, 5) // Log first 5 labels for debugging
+        availableLabels: chart.data.labels?.slice(0, 5)
       })
 
       // Find the index in our fixed time points array that matches the current time
       const timeIndex = chart.data.labels?.findIndex((value: unknown) => {
         const label = value as string
-        console.log('Comparing times:', {
-          label,
-          currentTime,
-          match: label === currentTime
-        })
         return label === currentTime
       })
 
@@ -105,7 +100,22 @@ export function StockChart({ data, livePrice, title = "Stock Price" }: StockChar
     datasets: [
       {
         label: "Price",
-        data: data.values.map(value => Number(value)), // Ensure all values are numbers
+        data: data.values.map((value, index) => {
+          // If the value is null, it means it's past the last timestamp
+          if (value === null) {
+            return NaN
+          }
+          
+          // Find the last non-null value index
+          const lastValidIndex = data.values.findLastIndex(v => v !== null)
+          
+          // If we're past the last valid index, return NaN
+          if (index > lastValidIndex) {
+            return NaN
+          }
+          
+          return Number(value)
+        }),
         borderColor: "rgb(75, 192, 192)",
         tension: 0.1,
         pointRadius: 0,
@@ -139,7 +149,7 @@ export function StockChart({ data, livePrice, title = "Stock Price" }: StockChar
         callbacks: {
           label: (context) => {
             const value = context.parsed.y
-            return `$${value.toFixed(2)}`
+            return !isNaN(value) ? `$${value.toFixed(2)}` : 'No data'
           }
         }
       }
@@ -153,7 +163,11 @@ export function StockChart({ data, livePrice, title = "Stock Price" }: StockChar
         ticks: {
           maxRotation: 0,
           autoSkip: true,
-          maxTicksLimit: 6
+          maxTicksLimit: 6,
+          callback: (value) => {
+            const date = new Date(data.labels[value as number])
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
         }
       },
       y: {

@@ -32,6 +32,7 @@ export function useStockWebSocket(symbol: string) {
           symbols: symbol
         }
       }))
+      setError(null) // Clear any previous errors on successful connection
     }
 
     ws.onmessage = (event) => {
@@ -39,20 +40,29 @@ export function useStockWebSocket(symbol: string) {
         const update: TwelveDataPriceUpdate = JSON.parse(event.data)
         if (update.event === "price" && update.symbol === symbol) {
           setPrice(update.price)
+          setError(null) // Clear any previous errors on successful message
         }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error)
-        setError("Failed to parse price update")
+        // Don't set error for parsing issues, just log them
       }
     }
 
     ws.onerror = (error) => {
       console.error("WebSocket error:", error)
-      setError("WebSocket connection error")
+      // Don't set error for connection issues, just log them
     }
 
     ws.onclose = () => {
-      setError("WebSocket connection closed")
+      // Only set error if we're in market hours and the connection was closed unexpectedly
+      const now = new Date()
+      const hours = now.getHours()
+      const minutes = now.getMinutes()
+      const isMarketHours = (hours > 9 || (hours === 9 && minutes >= 30)) && hours < 16
+      
+      if (isMarketHours) {
+        setError("WebSocket connection closed")
+      }
     }
 
     wsRef.current = ws

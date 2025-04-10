@@ -9,7 +9,7 @@ import { useStockWebSocket } from "@/hooks/use-stock-websocket"
 import { isMarketOpen } from "@/lib/market-status"
 
 interface StockData {
-  price: number
+  price: number | null
   change: number
   changePercent: number
   timeSeries: {
@@ -104,19 +104,17 @@ export default function StockPage() {
              pointTime >= marketOpenTime && 
              pointTime <= marketCloseTime
     } else {
-      // Outside market hours, show today's data if it exists, otherwise show last trading day
-      if (pointDay === currentDay) {
-        return pointTime >= marketOpenTime && pointTime <= marketCloseTime
-      } else {
-        return pointDay === (currentDay === 1 ? 5 : currentDay - 1) // Previous trading day
-      }
+      // Outside market hours, show only actual data points
+      return pointDay === currentDay || 
+             pointDay === (currentDay === 1 ? 5 : currentDay - 1) // Previous trading day
     }
   })
 
   // Create array of time points from 9:30 AM to 4:00 PM in 1-minute intervals
   const timePoints = []
-  const startTime = 9 * 60 + 30 // 9:30 AM in minutes
-  const endTime = 16 * 60 // 4:00 PM in minutes
+  const startTime = 9 * 60 + 30 // 9:30 AM in minutes = 570
+  const endTime = 16 * 60 // 4:00 PM in minutes = 960
+  const totalPoints = endTime - startTime + 1 // 391 points
   
   for (let minutes = startTime; minutes <= endTime; minutes++) {
     const hours = Math.floor(minutes / 60)
@@ -126,31 +124,68 @@ export default function StockPage() {
     timePoints.push(date.toISOString())
   }
 
+  console.log('Time points analysis:', {
+    total: timePoints.length,
+    expected: totalPoints,
+    first: new Date(timePoints[0]).toLocaleTimeString(),
+    last: new Date(timePoints[timePoints.length - 1]).toLocaleTimeString(),
+    startTime: `${Math.floor(startTime/60)}:${String(startTime%60).padStart(2, '0')}`,
+    endTime: `${Math.floor(endTime/60)}:${String(endTime%60).padStart(2, '0')}`,
+    samplePoints: timePoints.slice(0, 5).map(t => new Date(t).toLocaleTimeString())
+  })
+
   // Create a map of timestamp to price for quick lookup
   const priceMap = new Map(
     filteredTimeSeries.map(point => [point.timestamp, point.price])
   )
+  console.log('Price Map:', priceMap)
 
-  // Map the time points to their corresponding prices
-  const chartData = {
-    labels: timePoints,
-    values: timePoints.map(timestamp => {
-      // Find the closest price point
-      const apiTimestamp = [...priceMap.keys()].reduce((closest, current) => {
-        const currentDiff = Math.abs(new Date(current).getTime() - new Date(timestamp).getTime())
-        const closestDiff = Math.abs(new Date(closest).getTime() - new Date(timestamp).getTime())
-        return currentDiff < closestDiff ? current : closest
-      })
-      // If no price found, use the last known price
-      return priceMap.get(apiTimestamp) ?? stockData.price
-    })
+  // Find the last timestamp with actual data
+  const lastDataTimestamp = filteredTimeSeries.length > 0 
+    ? new Date(filteredTimeSeries[0].timestamp)
+    : null
+
+  // For stocks with live updates, use the fixed time points
+  // For stocks without live updates, use the actual timestamps
+  let pricesArray = new Array(timePoints.length).fill(null)
+  
+  // Fill pricesArray with prices from filtered time series
+ pricesArray = [...priceMap.values()]
+  
+  // Set the last known price
+  if (stockData.price !== null) {
+    pricesArray[pricesArray.length - 1] = stockData.price
   }
   
-  console.log('Chart Data:', {
-    timePoints: timePoints.length,
-    dataPoints: filteredTimeSeries.length,
-    firstTime: timePoints[0],
-    lastTime: timePoints[timePoints.length - 1]
+  console.log('Updated Prices:', pricesArray)
+  console.log('Last Price:', stockData.price)
+  const chartData = marketStatus ? {
+    labels: timePoints,
+    values: pricesArray
+  } : {
+    // For non-live stocks, use the full market hours time points
+    labels: timePoints,
+    values: timePoints.map(timestamp => {
+      const currentTimestamp = new Date(timestamp)
+      
+      // If we have no data or this timestamp is after our last data point, return null
+      if (!lastDataTimestamp || currentTimestamp > lastDataTimestamp) {
+        return null
+      }
+
+      // Format current timestamp to match API timestamp format (minute precision)
+      const formattedTimestamp = currentTimestamp.toISOString()
+
+      // Only use exact timestamp matches
+      return priceMap.get(formattedTimestamp) ?? null
+    })
+  }
+
+  console.log('Chart Data analysis:', {
+    marketStatus,
+    lastDataTimestamp: lastDataTimestamp?.toISOString(),
+    totalPoints: timePoints.length,
+ 
   })
 
   // Use live price if available, otherwise use the last known price
@@ -163,7 +198,7 @@ export default function StockPage() {
         <div className="text-sm text-muted-foreground">{exchange}</div>
         <div className="mt-2 flex items-center gap-4">
           <span className="text-2xl font-semibold">
-            ${currentPrice.toFixed(2)}
+            ${currentPrice?.toFixed(2) ?? 'N/A'}
           </span>
           <span
             className={cn(
@@ -189,7 +224,7 @@ export default function StockPage() {
 
       <div className="h-[400px] w-full">
         <StockChart 
-          data={chartData} 
+          data={chartData as { labels: string[]; values: (number | null)[] }}
           livePrice={marketStatus ? livePrice : null}
           title={marketStatus ? "Today's Price" : isWeekend ? "Last Trading Day" : "Today's Price"}
         />

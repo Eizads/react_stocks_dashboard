@@ -14,10 +14,12 @@ export async function GET(request: Request) {
   }
 
   if (!TWELVE_DATA_API_KEY) {
+    console.error('TWELVE_DATA_API_KEY is not configured');
     return NextResponse.json({ error: 'API key is not configured' }, { status: 500 });
   }
 
   try {
+    console.log('Searching for:', query);
     const response = await axios.get<SearchResponse>(`${TWELVE_DATA_API_URL}/symbol_search`, {
       params: {
         symbol: query,
@@ -25,12 +27,19 @@ export async function GET(request: Request) {
       }
     });
 
+    console.log('Search response:', response.data);
     return NextResponse.json(response.data);
   } catch (error) {
     console.error('Error fetching stock data:', error);
     
     // Handle axios errors
     if (axios.isAxiosError(error)) {
+      console.error('Axios error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      
       return NextResponse.json(
         { error: error.response?.data?.message || 'Failed to fetch stock data' },
         { status: error.response?.status || 500 }
