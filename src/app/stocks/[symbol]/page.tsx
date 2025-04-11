@@ -282,7 +282,7 @@ export default function StockPage() {
           ) : (
             <span className="text-sm text-gray-500">Market Closed</span>
           )}
-          {wsError && (
+          {(wsError || !livePrice) && (
             <span className="text-sm text-red-500">
               Live updates unavailable
             </span>
