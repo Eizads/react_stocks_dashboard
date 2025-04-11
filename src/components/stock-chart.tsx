@@ -119,7 +119,7 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
           }
           return Number(value)
         }),
-        borderColor: "rgb(75, 192, 192)",
+        borderColor: (data.values?.[data.values.length - 1] ?? 0 ) >= previousClose ? "rgb(34, 197, 94)" : "rgb(239, 68, 68)",
         tension: 0.1,
         pointRadius: 0,
         borderWidth: 2,
