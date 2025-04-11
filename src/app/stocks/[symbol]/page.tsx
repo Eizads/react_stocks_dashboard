@@ -187,6 +187,16 @@ export default function StockPage() {
       daysBack: currentDay === 1 ? 3 : 1,
       showingDate: new Date(new Date().setDate(new Date().getDate() - (currentDay === 1 ? 3 : 1))).toLocaleDateString()
     })
+  } else if(marketStatus && livePrice){
+    console.log('Showing live price data:', {
+      livePrice
+    })
+    pricesArray = [...priceMap.values()]
+    if (stockData.price !== null) {
+      pricesArray[pricesArray.length - 1] = stockData.price
+    }
+    chartData.values = pricesArray
+  
   } else if(marketStatus && !livePrice){
     console.log('Showing current day data (market open, no live price)')
     // For non-live stocks, use the full market hours time points
