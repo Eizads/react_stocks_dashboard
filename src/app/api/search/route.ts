@@ -28,7 +28,19 @@ export async function GET(request: Request) {
     });
 
     console.log('Search response:', response.data);
-    return NextResponse.json(response.data);
+
+    // Sort results to prioritize NASDAQ stocks
+    const sortedData = {
+      ...response.data,
+      data: response.data.data.sort((a, b) => {
+        // Put NASDAQ stocks first
+        if (a.exchange === 'NASDAQ' && b.exchange !== 'NASDAQ') return -1;
+        if (a.exchange !== 'NASDAQ' && b.exchange === 'NASDAQ') return 1;
+        return 0;
+      })
+    };
+
+    return NextResponse.json(sortedData);
   } catch (error) {
     console.error('Error fetching stock data:', error);
     

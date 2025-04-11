@@ -7,6 +7,7 @@ import { StockChart } from "@/components/stock-chart"
 import { cn } from "@/lib/utils"
 import { useStockWebSocket } from "@/hooks/use-stock-websocket"
 import { isMarketOpen } from "@/lib/market-status"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface StockData {
   price: number | null
@@ -41,22 +42,13 @@ export default function StockPage() {
         const isOpen = isMarketOpen()
         console.log('Market is open:', isOpen)
         
-        // Always fetch current price data
-        const quoteResponse = await axios.get(`/api/stocks/${symbol}`)
+        // Make both API calls in parallel
+        const [quoteResponse, timeSeriesResponse] = await Promise.all([
+          axios.get(`/api/stocks/${symbol}`),
+          axios.get(`/api/stocks/${symbol}/intraday`)  // Always use intraday data
+        ])
+        
         console.log('Quote Response:', quoteResponse.data)
-        
-        // Get current date info
-        const now = new Date()
-        const currentDay = now.getDay()
-        const isWeekend = currentDay === 0 || currentDay === 6
-        
-        // Fetch intraday data if it's a weekday (even if market is closed)
-        // Only use daily data for weekends
-        const timeSeriesResponse = await axios.get(
-          !isWeekend 
-            ? `/api/stocks/${symbol}/intraday`  // Intraday data on weekdays
-            : `/api/stocks/${symbol}/daily`     // Daily data on weekends
-        )
         console.log('Time Series Response:', timeSeriesResponse.data)
         
         setStockData({
@@ -80,15 +72,50 @@ export default function StockPage() {
   }, [symbol])
 
   if (loading) {
-    return <div>Loading...</div>
+    return (
+      <div className="container mx-auto p-4">
+        <div className="mb-8">
+          <Skeleton className="h-10 w-32" /> {/* Symbol */}
+          <Skeleton className="h-4 w-24 mt-1" /> {/* Exchange */}
+          <div className="mt-2 flex items-center gap-4">
+            <Skeleton className="h-8 w-24" /> {/* Price */}
+            <Skeleton className="h-6 w-32" /> {/* Change */}
+            <Skeleton className="h-4 w-24" /> {/* Market Status */}
+          </div>
+        </div>
+
+        <Skeleton className="h-[400px] w-full mb-8" /> {/* Chart */}
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="p-4 rounded-lg border">
+              <Skeleton className="h-4 w-24 mb-2" /> {/* Label */}
+              <Skeleton className="h-6 w-20" /> {/* Value */}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   if (error) {
-    return <div className="text-red-500">{error}</div>
+    return (
+      <div className="container mx-auto p-4">
+        <div className="text-red-500 p-4 rounded-lg border border-red-200 bg-red-50">
+          {error}
+        </div>
+      </div>
+    )
   }
 
   if (!stockData) {
-    return <div>Stock not found</div>
+    return (
+      <div className="container mx-auto p-4">
+        <div className="text-gray-500 p-4 rounded-lg border">
+          Stock not found
+        </div>
+      </div>
+    )
   }
 
   // Get current date info
@@ -259,24 +286,47 @@ export default function StockPage() {
   // Use live price if available, otherwise use the last known price
   const currentPrice = livePrice ?? stockData.price
 
+  // Calculate high and low prices from filtered time series
+  const prices = filteredTimeSeries.map(point => point.price)
+  const highPrice = Math.max(...prices)
+  const lowPrice = Math.min(...prices)
+
   return (
     <div className="container mx-auto p-4">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">{symbol}</h1>
-        <div className="text-sm text-muted-foreground">{exchange}</div>
+        {!symbol ? (
+          <>
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-4 w-24 mt-1" />
+          </>
+        ) : (
+          <>
+            <h1 className="text-3xl font-bold">{symbol}</h1>
+            <div className="text-sm text-muted-foreground">{exchange}</div>
+          </>
+        )}
         <div className="mt-2 flex items-center gap-4">
-          <span className="text-2xl font-semibold">
-            ${currentPrice?.toFixed(2) ?? 'N/A'}
-          </span>
-          <span
-            className={cn(
-              "text-lg",
-              stockData.change >= 0 ? "text-green-500" : "text-red-500"
-            )}
-          >
-            {stockData.change >= 0 ? "+" : ""}
-            {stockData.change.toFixed(2)} ({stockData.changePercent.toFixed(2)}%)
-          </span>
+          {currentPrice === null ? (
+            <>
+              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-6 w-32" />
+            </>
+          ) : (
+            <>
+              <span className="text-2xl font-semibold">
+                ${currentPrice?.toFixed(2) ?? 'N/A'}
+              </span>
+              <span
+                className={cn(
+                  "text-lg",
+                  stockData.change >= 0 ? "text-green-500" : "text-red-500"
+                )}
+              >
+                {stockData.change >= 0 ? "+" : ""}
+                {stockData.change.toFixed(2)} ({stockData.changePercent.toFixed(2)}%)
+              </span>
+            </>
+          )}
           {marketStatus ? (
             <span className="text-sm text-green-500">Market Open</span>
           ) : (
@@ -290,13 +340,43 @@ export default function StockPage() {
         </div>
       </div>
 
-      <div className="h-[400px] w-full">
-        <StockChart 
-          data={chartData as { labels: string[]; values: (number | null)[] }}
-          livePrice={marketStatus ? livePrice : null}
-          title={marketStatus ? "Today's Price" : isWeekend ? "Last Trading Day" : "Today's Price"}
-          previousClose={stockData.previousClose}
-        />
+      {!chartData ? (
+        <Skeleton className="h-[400px] w-full mb-8" />
+      ) : (
+        <div className="h-[400px] w-full mb-8">
+          <StockChart 
+            data={chartData as { labels: string[]; values: (number | null)[] }}
+            livePrice={marketStatus ? livePrice : null}
+            title={marketStatus ? "Today's Price" : isWeekend ? "Last Trading Day" : "Today's Price"}
+            previousClose={stockData.previousClose}
+          />
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {!stockData ? (
+          [...Array(3)].map((_, i) => (
+            <div key={i} className="p-4 rounded-lg border">
+              <Skeleton className="h-4 w-24 mb-2" />
+              <Skeleton className="h-6 w-20" />
+            </div>
+          ))
+        ) : (
+          <>
+            <div className="p-4 rounded-lg border">
+              <div className="text-sm text-gray-500">Previous Close</div>
+              <div className="text-lg font-semibold">${stockData.previousClose.toFixed(2)}</div>
+            </div>
+            <div className="p-4 rounded-lg border">
+              <div className="text-sm text-gray-500">Day High</div>
+              <div className="text-lg font-semibold">${highPrice.toFixed(2)}</div>
+            </div>
+            <div className="p-4 rounded-lg border">
+              <div className="text-sm text-gray-500">Day Low</div>
+              <div className="text-lg font-semibold">${lowPrice.toFixed(2)}</div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
