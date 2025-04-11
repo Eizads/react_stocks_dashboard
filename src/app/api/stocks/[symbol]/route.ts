@@ -26,6 +26,7 @@ export async function GET(
       price: parseFloat(quote.close),
       change: parseFloat(quote.change),
       changePercent: parseFloat(quote.percent_change),
+      previousClose: parseFloat(quote.previous_close),
     })
   } catch (error) {
     console.error("Error fetching stock quote:", error)

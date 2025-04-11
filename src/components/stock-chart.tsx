@@ -16,6 +16,7 @@ import {
 import { Line } from "react-chartjs-2"
 import { useEffect, useRef } from "react"
 import 'chartjs-adapter-date-fns'
+import annotationPlugin from 'chartjs-plugin-annotation'
 
 // Register ChartJS components
 ChartJS.register(
@@ -26,7 +27,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  TimeScale
+  TimeScale,
+  annotationPlugin
 )
 
 interface StockChartProps {
@@ -36,9 +38,10 @@ interface StockChartProps {
   }
   livePrice?: number | null
   title?: string
+  previousClose: number
 }
 
-export function StockChart({ data, livePrice, title = "Stock Price" }: StockChartProps) {
+export function StockChart({ data, livePrice, title = "Stock Price", previousClose }: StockChartProps) {
   console.log('Chart received data:', data)
   
   const chartRef = useRef<ChartJS<"line">>(null)
@@ -68,11 +71,18 @@ export function StockChart({ data, livePrice, title = "Stock Price" }: StockChar
         console.log('Updating price at index:', timeIndex, 'with value:', livePrice)
         // Ensure we're working with numbers
         const data = chart.data.datasets[0].data as number[]
+        
+        // Update the current time slot with live price
         data[timeIndex] = Number(livePrice)
         
-        // Clear all prices after the current time point
-        for (let i = timeIndex + 1; i < data.length; i++) {
-          data[i] = NaN
+        // For any null or undefined values before current time, use the last known price
+        let lastKnownPrice = Number(livePrice)
+        for (let i = timeIndex - 1; i >= 0; i--) {
+          if (isNaN(data[i])) {
+            data[i] = lastKnownPrice
+          } else {
+            lastKnownPrice = data[i]
+          }
         }
         
         chart.update('none') // Use 'none' to prevent animation
@@ -101,19 +111,12 @@ export function StockChart({ data, livePrice, title = "Stock Price" }: StockChar
       {
         label: "Price",
         data: data.values.map((value, index) => {
-          // If the value is null, it means it's past the last timestamp
           if (value === null) {
-            return NaN
+            // Find the last valid value before this point
+            const previousValues = data.values.slice(0, index)
+            const lastValidValue = previousValues.reverse().find(v => v !== null)
+            return lastValidValue !== undefined ? Number(lastValidValue) : NaN
           }
-          
-          // Find the last non-null value index
-          const lastValidIndex = data.values.findLastIndex(v => v !== null)
-          
-          // If we're past the last valid index, return NaN
-          if (index > lastValidIndex) {
-            return NaN
-          }
-          
           return Number(value)
         }),
         borderColor: "rgb(75, 192, 192)",
@@ -121,7 +124,7 @@ export function StockChart({ data, livePrice, title = "Stock Price" }: StockChar
         pointRadius: 0,
         borderWidth: 2,
         spanGaps: true
-      },
+      }
     ],
   }
 
@@ -133,9 +136,16 @@ export function StockChart({ data, livePrice, title = "Stock Price" }: StockChar
     animation: {
       duration: 0
     },
+    layout: {
+      padding: {
+        right: 100,
+        top: 20,
+        bottom: 10
+      }
+    },
     plugins: {
       legend: {
-        display: false,
+        display: false
       },
       title: {
         display: true,
@@ -144,12 +154,52 @@ export function StockChart({ data, livePrice, title = "Stock Price" }: StockChar
           size: 16,
           weight: "bold",
         },
+        padding: {
+          bottom: 10
+        }
       },
       tooltip: {
         callbacks: {
           label: (context) => {
             const value = context.parsed.y
             return !isNaN(value) ? `$${value.toFixed(2)}` : 'No data'
+          }
+        }
+      },
+      annotation: {
+        common: {
+          drawTime: 'beforeDatasetsDraw'
+        },
+        annotations: {
+          previousCloseLine: {
+            type: 'line',
+            yMin: previousClose,
+            yMax: previousClose,
+            xMin: 0,
+            xMax: data.labels.length - 1,
+            borderColor: 'rgb(156, 163, 175)',
+            borderDash: [5, 5],
+            borderWidth: 1,
+            label: {
+              display: true,
+              content: ['Previous','Close', `$${previousClose.toFixed(2)}`],
+              position: 'end',
+              backgroundColor: 'white',
+              color: 'rgb(156, 163, 175)',
+              font: {
+                size: 12
+              },
+              textAlign: 'left',
+              xAdjust: 0,
+              yAdjust: 0,
+              padding: {
+                left: 0,
+                top: 0,
+                bottom: 0,
+                right: 10
+              },
+              z: 1000
+            }
           }
         }
       }
@@ -175,8 +225,13 @@ export function StockChart({ data, livePrice, title = "Stock Price" }: StockChar
           color: "rgba(0, 0, 0, 0.1)",
         },
         ticks: {
-          callback: (value) => `$${value}`
-        }
+          callback: (value) => value
+        },
+        position: 'left',
+        beginAtZero: false,
+        suggestedMin: Math.min(previousClose * 0.995, ...data.values.filter(v => v !== null) as number[]),
+        suggestedMax: Math.max(previousClose * 1.005, ...data.values.filter(v => v !== null) as number[]),
+        grace: '10%'
       },
     },
     interaction: {
