@@ -18,6 +18,12 @@ interface StockData {
     price: number
   }[]
   isMarketOpen: boolean
+  timeSeriesByDay?: {
+    [date: string]: {
+      timestamp: string
+      price: number
+    }[]
+  }
 }
 
 export default function StockPage() {
@@ -56,6 +62,7 @@ export default function StockPage() {
         setStockData({
           ...quoteResponse.data,
           timeSeries: timeSeriesResponse.data.timeSeries,
+          timeSeriesByDay: timeSeriesResponse.data.timeSeriesByDay,
           isMarketOpen: isOpen
         })
         setError(null)
@@ -84,9 +91,9 @@ export default function StockPage() {
     return <div>Stock not found</div>
   }
 
-  // Filter data based on market status and current day
+  // Get current date info
   const now = new Date()
-  const currentDay = now.getDay() // 0 = Sunday, 1 = Monday, etc.
+  const currentDay = now.getDay()
   const isWeekend = currentDay === 0 || currentDay === 6
   const marketStatus = stockData.isMarketOpen
   const currentHour = now.getHours()
@@ -121,7 +128,7 @@ export default function StockPage() {
         return pointTime >= marketOpenTime && pointTime <= marketCloseTime
       }
       // Show previous day's data if we don't have today's data
-      return pointDay === (currentDay === 1 ? 5 : currentDay - 1)
+      return pointDay === (currentDay === 1 ? 5 : currentDay - 1) // Previous trading day
     }
   })
 
@@ -129,7 +136,6 @@ export default function StockPage() {
   const timePoints: string[] = []
   const startTime = 9 * 60 + 30 // 9:30 AM in minutes = 570
   const endTime = 16 * 60 // 4:00 PM in minutes = 960
-  const totalPoints = endTime - startTime + 1 // 391 points
   
   for (let minutes = startTime; minutes <= endTime; minutes++) {
     const hours = Math.floor(minutes / 60)
@@ -138,16 +144,6 @@ export default function StockPage() {
     date.setHours(hours, mins, 0, 0)
     timePoints.push(date.toISOString())
   }
-
-  console.log('Time points analysis:', {
-    total: timePoints.length,
-    expected: totalPoints,
-    first: new Date(timePoints[0]).toLocaleTimeString(),
-    last: new Date(timePoints[timePoints.length - 1]).toLocaleTimeString(),
-    startTime: `${Math.floor(startTime/60)}:${String(startTime%60).padStart(2, '0')}`,
-    endTime: `${Math.floor(endTime/60)}:${String(endTime%60).padStart(2, '0')}`,
-    samplePoints: timePoints.slice(0, 5).map(t => new Date(t).toLocaleTimeString())
-  })
 
   // Create a map of timestamp to price for quick lookup
   const priceMap = new Map(
@@ -160,47 +156,6 @@ export default function StockPage() {
     ? new Date(filteredTimeSeries[0].timestamp)
     : null
 
-  // For stocks with live updates, use the fixed time points
-  // For stocks without live updates, use the actual timestamps
-  let pricesArray = new Array(timePoints.length).fill(null)
-  
-  // Fill pricesArray with prices from filtered time series
- pricesArray = [...priceMap.values()]
-  
-  // Set the last known price
-  if (stockData.price !== null) {
-    pricesArray[pricesArray.length - 1] = stockData.price
-  }
-  
-  console.log('Updated Prices:', pricesArray)
-  console.log('Last Price:', stockData.price)
-  // const chartData = marketStatus ? {
-  //   labels: timePoints,
-  //   values: pricesArray
-  // } : {
-  //   // For non-live stocks, use the full market hours time points
-  //   labels: timePoints,
-  //   values: timePoints.map(timestamp => {
-  //     const currentTimestamp = new Date(timestamp)
-      
-  //     // If we have no data or this timestamp is after our last data point, return null
-  //     if (!lastDataTimestamp || currentTimestamp > lastDataTimestamp) {
-  //       return null
-  //     }
-
-  //     // Format current timestamp to match API timestamp format (minute precision)
-  //     const formattedTimestamp = currentTimestamp.toISOString()
-
-  //     // Only use exact timestamp matches
-  //     return priceMap.get(formattedTimestamp) ?? null
-  //   })
-  // }
-// for live stocks
-  const chartData = {
-    labels: timePoints,
-    values: pricesArray
-  } 
-
   // Construct preMarket data array for yesterday
   const preMarket = timePoints.map(timestamp => {
     const currentTimestamp = new Date(timestamp)
@@ -210,8 +165,18 @@ export default function StockPage() {
     const daysToSubtract = currentDay === 1 ? 3 : 1
     previousTradingDay.setDate(previousTradingDay.getDate() - daysToSubtract)
     const formattedTimestamp = previousTradingDay.toISOString()
+    // console.log('the PreMarket data:', {
+    //   formattedTimestamp,
+    //   price: priceMap.get(formattedTimestamp) ?? null
+    // })
     return priceMap.get(formattedTimestamp) ?? null
   })
+  let pricesArray = new Array(timePoints.length).fill(null)
+
+  const chartData = {
+    labels: timePoints,
+    values: pricesArray
+  } 
 
   // Use preMarket data if it's before market hours on a weekday
   if (!marketStatus && !isWeekend && currentTotalMinutes < marketOpenTime) {
@@ -224,22 +189,19 @@ export default function StockPage() {
     })
   } else if(marketStatus && !livePrice){
     console.log('Showing current day data (market open, no live price)')
-    //  For non-live stocks, use the full market hours time points
-    chartData.values = timePoints.map(timestamp => {
-      const currentTimestamp = new Date(timestamp)
-      
-      // If we have no data or this timestamp is after our last data point, return null
-      if (!lastDataTimestamp || currentTimestamp > lastDataTimestamp) {
-        return null
-      }
+    // For non-live stocks, use the full market hours time points
+    pricesArray = [...priceMap.values()]
+    
+    // Set the last known price
+    if (stockData.price !== null) {
+      pricesArray[pricesArray.length - 1] = stockData.price
+    }
+    
+    console.log('Updated Prices:', pricesArray)
+    console.log('Last Price:', stockData.price)
+    console.log('chartData', chartData.values)
 
-      // Format current timestamp to match API timestamp format (minute precision)
-      const formattedTimestamp = currentTimestamp.toISOString()
-
-      // Only use exact timestamp matches
-      return priceMap.get(formattedTimestamp) ?? null
-    })
-    console.log('Showing current day data (market open, no live price)')
+    chartData.values = pricesArray
   } else if(!marketStatus && isWeekend){
     console.log('Showing weekend data:', {
       currentDay,
@@ -257,7 +219,6 @@ export default function StockPage() {
       const formattedTimestamp = lastTradingDay.toISOString()
       return priceMap.get(formattedTimestamp) ?? null
     })
-
   } else {
     chartData.values = pricesArray
     console.log('Showing current day data:', {
@@ -268,12 +229,10 @@ export default function StockPage() {
     })
   }
 
-  
   console.log('Chart Data analysis:', {
     marketStatus,
     lastDataTimestamp: lastDataTimestamp?.toISOString(),
     totalPoints: timePoints.length,
- 
   })
 
   // Use live price if available, otherwise use the last known price
