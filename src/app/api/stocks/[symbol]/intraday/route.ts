@@ -25,8 +25,8 @@ export async function GET(
     const timeSeriesResponse = await axios.get<TwelveDataTimeSeries>(`${TWELVE_DATA_API_URL}/time_series`, {
       params: {
         symbol: symbol,
-        interval: "1min",
-        outputsize: 1170, // 3 days of 1-minute data (390 * 3)
+        interval: "5min",
+        outputsize: 234, // 3 days of 5-minute data (78 * 3)
         timezone: "America/New_York",
         apikey: TWELVE_DATA_API_KEY,
       },
@@ -57,7 +57,7 @@ export async function GET(
         timestamp: point.datetime,
         price: parseFloat(point.close),
       })),
-      byDay: groupedByDay
+      timeSeriesByDay: groupedByDay
     }
 
     console.log('stockData intraday:', stockData)

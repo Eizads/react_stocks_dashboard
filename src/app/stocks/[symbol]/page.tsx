@@ -132,12 +132,12 @@ export default function StockPage() {
     }
   })
 
-  // Create array of time points from 9:30 AM to 4:00 PM in 1-minute intervals
+  // Create array of time points from 9:30 AM to 4:00 PM in 5-minute intervals
   const timePoints: string[] = []
   const startTime = 9 * 60 + 30 // 9:30 AM in minutes = 570
   const endTime = 16 * 60 // 4:00 PM in minutes = 960
   
-  for (let minutes = startTime; minutes <= endTime; minutes++) {
+  for (let minutes = startTime; minutes <= endTime; minutes += 5) {
     const hours = Math.floor(minutes / 60)
     const mins = minutes % 60
     const date = new Date()
@@ -156,6 +156,19 @@ export default function StockPage() {
     ? new Date(filteredTimeSeries[0].timestamp)
     : null
 
+  let pricesArray = new Array(timePoints.length).fill(null)
+  
+  // Fill pricesArray with prices from filtered time series
+  pricesArray = [...priceMap.values()].reverse()
+  
+  // Set the last known price
+  if (stockData.price !== null) {
+    pricesArray[pricesArray.length - 1] = stockData.price
+  }
+  
+  console.log('Updated Prices:', pricesArray)
+  console.log('Last Price:', stockData.price)
+
   // Construct preMarket data array for yesterday
   const preMarket = timePoints.map(timestamp => {
     const currentTimestamp = new Date(timestamp)
@@ -165,13 +178,10 @@ export default function StockPage() {
     const daysToSubtract = currentDay === 1 ? 3 : 1
     previousTradingDay.setDate(previousTradingDay.getDate() - daysToSubtract)
     const formattedTimestamp = previousTradingDay.toISOString()
-    // console.log('the PreMarket data:', {
-    //   formattedTimestamp,
-    //   price: priceMap.get(formattedTimestamp) ?? null
-    // })
+      .replace('T', ' ')
+      .replace(/\.\d+Z$/, '')
     return priceMap.get(formattedTimestamp) ?? null
   })
-  let pricesArray = new Array(timePoints.length).fill(null)
 
   const chartData = {
     labels: timePoints,
@@ -196,7 +206,6 @@ export default function StockPage() {
       pricesArray[pricesArray.length - 1] = stockData.price
     }
     chartData.values = pricesArray
-  
   } else if(marketStatus && !livePrice){
     console.log('Showing current day data (market open, no live price)')
     // For non-live stocks, use the full market hours time points
@@ -227,6 +236,8 @@ export default function StockPage() {
       const daysToSubtract = currentDay === 0 ? 2 : 1 // Subtract 2 days for Sunday, 1 for Saturday
       lastTradingDay.setDate(lastTradingDay.getDate() - daysToSubtract)
       const formattedTimestamp = lastTradingDay.toISOString()
+        .replace('T', ' ')
+        .replace(/\.\d+Z$/, '')
       return priceMap.get(formattedTimestamp) ?? null
     })
   } else {
