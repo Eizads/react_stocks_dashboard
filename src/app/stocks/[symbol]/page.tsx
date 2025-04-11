@@ -191,7 +191,7 @@ export default function StockPage() {
     console.log('Showing live price data:', {
       livePrice
     })
-    pricesArray = [...priceMap.values()]
+    pricesArray = [...priceMap.values()].reverse()
     if (stockData.price !== null) {
       pricesArray[pricesArray.length - 1] = stockData.price
     }
@@ -200,7 +200,7 @@ export default function StockPage() {
   } else if(marketStatus && !livePrice){
     console.log('Showing current day data (market open, no live price)')
     // For non-live stocks, use the full market hours time points
-    pricesArray = [...priceMap.values()]
+    pricesArray = [...priceMap.values()].reverse()
     
     // Set the last known price
     if (stockData.price !== null) {
