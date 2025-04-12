@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { useStockWebSocket } from "@/hooks/use-stock-websocket"
 import { isMarketOpen } from "@/lib/market-status"
 import { Skeleton } from "@/components/ui/skeleton"
+import { StockSearchResult } from "@/types/search"
 
 interface StockData {
   price: number | null
@@ -34,6 +35,7 @@ export default function StockPage() {
   const [stockData, setStockData] = useState<StockData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [companyName, setCompanyName] = useState<string>("")
   const { price: livePrice, error: wsError } = useStockWebSocket(symbol)
 
   useEffect(() => {
@@ -42,11 +44,18 @@ export default function StockPage() {
         const isOpen = isMarketOpen()
         console.log('Market is open:', isOpen)
         
-        // Make both API calls in parallel
-        const [quoteResponse, timeSeriesResponse] = await Promise.all([
+        // Make API calls in parallel
+        const [quoteResponse, timeSeriesResponse, searchResponse] = await Promise.all([
           axios.get(`/api/stocks/${symbol}`),
-          axios.get(`/api/stocks/${symbol}/intraday`)  // Always use intraday data
+          axios.get(`/api/stocks/${symbol}/intraday`),
+          axios.get(`/api/search?query=${symbol}`)
         ])
+
+        // Find the matching stock from search results
+        const stockInfo = searchResponse.data.data.find(
+          (stock: StockSearchResult) => stock.symbol === symbol && stock.exchange === exchange
+        )
+        setCompanyName(stockInfo?.instrument_name || "")
         
         console.log('Quote Response:', quoteResponse.data)
         console.log('Time Series Response:', timeSeriesResponse.data)
@@ -69,7 +78,7 @@ export default function StockPage() {
     if (symbol) {
       fetchStockData()
     }
-  }, [symbol])
+  }, [symbol, exchange])
 
   if (loading) {
     return (
@@ -249,24 +258,28 @@ export default function StockPage() {
 
     chartData.values = pricesArray
   } else if(!marketStatus && isWeekend){
+    // if weekend, show last trading day (Friday)
+ 
+    const currentTimestamp = new Date()
+    // Get last Friday's date
+    const lastTradingDay = new Date(currentTimestamp)
+    const daysToSubtract = currentDay === 0 ? 2 : 1 // Subtract 2 days for Sunday, 1 for Saturday
+    lastTradingDay.setDate(lastTradingDay.getDate() - daysToSubtract)
+    const formattedTimestamp = lastTradingDay.toISOString().split('T')[0]
+    
+    console.log('weekend formattedTimestamp', formattedTimestamp)
+    // For weekends, show the last trading day (Friday)
+    if (stockData.timeSeriesByDay && stockData.timeSeriesByDay[formattedTimestamp]) {
+      const dayData = stockData.timeSeriesByDay[formattedTimestamp]
+      chartData.values = dayData.map(point => point.price).reverse()
+    }
     console.log('Showing weekend data:', {
       currentDay,
       isSunday: currentDay === 0,
       daysBack: currentDay === 0 ? 2 : 1,
       showingDate: new Date(new Date().setDate(new Date().getDate() - (currentDay === 0 ? 2 : 1))).toLocaleDateString()
     })
-    // For weekends, show the last trading day (Friday)
-    chartData.values = timePoints.map(timestamp => {
-      const currentTimestamp = new Date(timestamp)
-      // Get last Friday's date
-      const lastTradingDay = new Date(currentTimestamp)
-      const daysToSubtract = currentDay === 0 ? 2 : 1 // Subtract 2 days for Sunday, 1 for Saturday
-      lastTradingDay.setDate(lastTradingDay.getDate() - daysToSubtract)
-      const formattedTimestamp = lastTradingDay.toISOString()
-        .replace('T', ' ')
-        .replace(/\.\d+Z$/, '')
-      return priceMap.get(formattedTimestamp) ?? null
-    })
+    
   } else {
     chartData.values = pricesArray
     console.log('Showing current day data:', {
@@ -301,8 +314,10 @@ export default function StockPage() {
           </>
         ) : (
           <>
-            <h1 className="text-3xl font-bold">{symbol}</h1>
-            <div className="text-sm text-muted-foreground">{exchange}</div>
+              <h1 className="text-3xl font-bold">{companyName}</h1>
+            <div className="text-md text-muted-foreground mt-2 mb-4">{exchange}: {symbol}</div>
+            
+          
           </>
         )}
         <div className="mt-2 flex items-center gap-4">
@@ -368,12 +383,12 @@ export default function StockPage() {
               <div className="text-lg font-semibold">${stockData.previousClose.toFixed(2)}</div>
             </div>
             <div className="p-4 rounded-lg border">
-              <div className="text-sm text-gray-500">Day High</div>
-              <div className="text-lg font-semibold">${highPrice.toFixed(2)}</div>
-            </div>
-            <div className="p-4 rounded-lg border">
               <div className="text-sm text-gray-500">Day Low</div>
               <div className="text-lg font-semibold">${lowPrice.toFixed(2)}</div>
+            </div>
+            <div className="p-4 rounded-lg border">
+              <div className="text-sm text-gray-500">Day High</div>
+              <div className="text-lg font-semibold">${highPrice.toFixed(2)}</div>
             </div>
           </>
         )}
