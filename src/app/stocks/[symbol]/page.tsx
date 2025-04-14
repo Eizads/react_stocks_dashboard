@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useParams } from "next/navigation"
 import axios from "axios"
 import { StockChart } from "@/components/stock-chart"
@@ -38,48 +38,77 @@ export default function StockPage() {
   const [companyName, setCompanyName] = useState<string>("")
   const { price: livePrice, error: wsError } = useStockWebSocket(symbol)
 
-  useEffect(() => {
-    const fetchStockData = async () => {
-      try {
-        const isOpen = isMarketOpen()
-        console.log('Market is open:', isOpen)
-        
-        // Make API calls in parallel
-        const [quoteResponse, timeSeriesResponse, searchResponse] = await Promise.all([
-          axios.get(`/api/stocks/${symbol}`),
-          axios.get(`/api/stocks/${symbol}/intraday`),
-          axios.get(`/api/search?query=${symbol}`)
-        ])
+  const fetchStockData = useCallback(async () => {
+    try {
+      const isOpen = isMarketOpen()
+      console.log('Market is open:', isOpen)
+      
+      // Make API calls in parallel
+      const [quoteResponse, timeSeriesResponse, searchResponse] = await Promise.all([
+        axios.get(`/api/stocks/${symbol}`),
+        axios.get(`/api/stocks/${symbol}/intraday`),
+        axios.get(`/api/search?query=${symbol}`)
+      ])
 
-        // Find the matching stock from search results
-        const stockInfo = searchResponse.data.data.find(
-          (stock: StockSearchResult) => stock.symbol === symbol && stock.exchange === exchange
-        )
-        setCompanyName(stockInfo?.instrument_name || "")
-        
-        console.log('Quote Response:', quoteResponse.data)
-        console.log('Time Series Response:', timeSeriesResponse.data)
-        console.log('by day response:', timeSeriesResponse.data.timeSeriesByDay)
-        
-        setStockData({
-          ...quoteResponse.data,
-          timeSeries: timeSeriesResponse.data.timeSeries,
-          timeSeriesByDay: timeSeriesResponse.data.timeSeriesByDay,
-          isMarketOpen: isOpen
-        })
-        setError(null)
-      } catch (err) {
-        console.error("Error fetching stock data:", err)
-        setError("Failed to fetch stock data. Please try again later.")
-      } finally {
-        setLoading(false)
+      // Find the matching stock from search results
+      const stockInfo = searchResponse.data.data.find(
+        (stock: StockSearchResult) => stock.symbol === symbol && stock.exchange === exchange
+      )
+      setCompanyName(stockInfo?.instrument_name || "")
+      
+      setStockData({
+        ...quoteResponse.data,
+        timeSeries: timeSeriesResponse.data.timeSeries,
+        timeSeriesByDay: timeSeriesResponse.data.timeSeriesByDay,
+        isMarketOpen: isOpen
+      })
+      setError(null)
+    } catch (err) {
+      console.error("Error fetching stock data:", err)
+      setError("Failed to fetch stock data. Please try again later.")
+    } finally {
+      setLoading(false)
+    }
+  }, [symbol, exchange])
+
+  // Add effect to check for market open only around opening time
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    const checkMarketOpen = () => {
+      const now = new Date()
+      const currentHour = now.getHours()
+      const currentMinutes = now.getMinutes()
+      const currentTotalMinutes = currentHour * 60 + currentMinutes
+      const marketOpenTime = 9 * 60 + 30 // 9:30 AM
+
+      // If market just opened or we're past opening time, clear interval and refresh
+      if (currentTotalMinutes >= marketOpenTime) {
+        if (interval) clearInterval(interval)
+        if (currentTotalMinutes === marketOpenTime) {
+          fetchStockData()
+        }
       }
     }
 
+    // Only start checking if it's before market open
+    const now = new Date()
+    const currentTotalMinutes = now.getHours() * 60 + now.getMinutes()
+    const marketOpenTime = 9 * 60 + 30
+
+    if (currentTotalMinutes < marketOpenTime) {
+      interval = setInterval(checkMarketOpen, 60000) // check every minute
+      return () => {
+        if (interval) clearInterval(interval)
+      }
+    }
+  }, [symbol, exchange, fetchStockData])
+
+  useEffect(() => {
     if (symbol) {
       fetchStockData()
     }
-  }, [symbol, exchange])
+  }, [symbol, exchange, fetchStockData])
 
   if (loading) {
     return (
