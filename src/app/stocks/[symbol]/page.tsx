@@ -59,6 +59,7 @@ export default function StockPage() {
         
         console.log('Quote Response:', quoteResponse.data)
         console.log('Time Series Response:', timeSeriesResponse.data)
+        console.log('by day response:', timeSeriesResponse.data.timeSeriesByDay)
         
         setStockData({
           ...quoteResponse.data,
@@ -185,7 +186,6 @@ export default function StockPage() {
   const priceMap = new Map(
     filteredTimeSeries.map(point => [point.timestamp, point.price])
   )
-  console.log('Price Map:', priceMap)
 
   // Find the last timestamp with actual data
   const lastDataTimestamp = filteredTimeSeries.length > 0 
@@ -193,46 +193,48 @@ export default function StockPage() {
     : null
 
   let pricesArray = new Array(timePoints.length).fill(null)
-  
-  // Fill pricesArray with prices from filtered time series
   pricesArray = [...priceMap.values()].reverse()
   
   // Set the last known price
   if (stockData.price !== null) {
     pricesArray[pricesArray.length - 1] = stockData.price
   }
-  
-  console.log('Updated Prices:', pricesArray)
-  console.log('Last Price:', stockData.price)
-
-  // Construct preMarket data array for yesterday
-  const preMarket = timePoints.map(timestamp => {
-    const currentTimestamp = new Date(timestamp)
-    // Set the timestamp to the previous trading day
-    const previousTradingDay = new Date(currentTimestamp)
-    // If Monday, go back to Friday (subtract 3 days)
-    const daysToSubtract = currentDay === 1 ? 3 : 1
-    previousTradingDay.setDate(previousTradingDay.getDate() - daysToSubtract)
-    const formattedTimestamp = previousTradingDay.toISOString()
-      .replace('T', ' ')
-      .replace(/\.\d+Z$/, '')
-    return priceMap.get(formattedTimestamp) ?? null
-  })
 
   const chartData = {
     labels: timePoints,
     values: pricesArray
-  } 
+  }
 
-  // Use preMarket data if it's before market hours on a weekday
-  if (!marketStatus && !isWeekend && currentTotalMinutes < marketOpenTime) {
-    chartData.values = preMarket
-    console.log('Showing preMarket data:', {
-      currentDay,
-      isMonday: currentDay === 1,
-      daysBack: currentDay === 1 ? 3 : 1,
-      showingDate: new Date(new Date().setDate(new Date().getDate() - (currentDay === 1 ? 3 : 1))).toLocaleDateString()
-    })
+  // Update chart data based on market conditions
+  if (!marketStatus && !isWeekend && currentTotalMinutes < marketOpenTime && currentDay === 1) {
+    // Before market hours on Monday - show Friday's data
+    const lastTradingDate = new Date(now)
+    lastTradingDate.setDate(lastTradingDate.getDate() - (currentDay === 1 ? 3 : 1))
+    const lastTradingDay = lastTradingDate.toISOString().split('T')[0]
+    
+    if (stockData.timeSeriesByDay && stockData.timeSeriesByDay[lastTradingDay]) {
+      chartData.values = stockData.timeSeriesByDay[lastTradingDay].map(point => point.price).reverse()
+      stockData.previousClose = stockData.timeSeriesByDay[lastTradingDay][0].price
+
+    }
+  } else if (!marketStatus && !isWeekend && currentTotalMinutes < marketOpenTime) {
+    // Before market hours on weekday - show previous day's data
+    const yesterday = new Date(now)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayDate = yesterday.toISOString().split('T')[0]
+    
+    if (stockData.timeSeriesByDay && stockData.timeSeriesByDay[yesterdayDate]) {
+      chartData.values = stockData.timeSeriesByDay[yesterdayDate].map(point => point.price).reverse()
+    }
+  } else if (!marketStatus && isWeekend) {
+    // Weekend - show last trading day's data
+    const lastTradingDate = new Date(now)
+    lastTradingDate.setDate(lastTradingDate.getDate() - (currentDay === 0 ? 2 : 1))
+    const lastTradingDay = lastTradingDate.toISOString().split('T')[0]
+    
+    if (stockData.timeSeriesByDay && stockData.timeSeriesByDay[lastTradingDay]) {
+      chartData.values = stockData.timeSeriesByDay[lastTradingDay].map(point => point.price).reverse()
+    }
   } else if(marketStatus && livePrice){
     console.log('Showing live price data:', {
       livePrice
@@ -257,37 +259,6 @@ export default function StockPage() {
     console.log('chartData', chartData.values)
 
     chartData.values = pricesArray
-  } else if(!marketStatus && isWeekend){
-    // if weekend, show last trading day (Friday)
- 
-    const currentTimestamp = new Date()
-    // Get last Friday's date
-    const lastTradingDay = new Date(currentTimestamp)
-    const daysToSubtract = currentDay === 0 ? 2 : 1 // Subtract 2 days for Sunday, 1 for Saturday
-    lastTradingDay.setDate(lastTradingDay.getDate() - daysToSubtract)
-    const formattedTimestamp = lastTradingDay.toISOString().split('T')[0]
-    
-    console.log('weekend formattedTimestamp', formattedTimestamp)
-    // For weekends, show the last trading day (Friday)
-    if (stockData.timeSeriesByDay && stockData.timeSeriesByDay[formattedTimestamp]) {
-      const dayData = stockData.timeSeriesByDay[formattedTimestamp]
-      chartData.values = dayData.map(point => point.price).reverse()
-    }
-    console.log('Showing weekend data:', {
-      currentDay,
-      isSunday: currentDay === 0,
-      daysBack: currentDay === 0 ? 2 : 1,
-      showingDate: new Date(new Date().setDate(new Date().getDate() - (currentDay === 0 ? 2 : 1))).toLocaleDateString()
-    })
-    
-  } else {
-    chartData.values = pricesArray
-    console.log('Showing current day data:', {
-      marketStatus,
-      currentTotalMinutes,
-      marketOpenTime,
-      isWeekend
-    })
   }
 
   console.log('Chart Data analysis:', {

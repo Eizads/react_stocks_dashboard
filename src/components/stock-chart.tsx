@@ -184,7 +184,7 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
             borderWidth: 1,
             label: {
               display: true,
-              content: ['Previous','Close', `$${previousClose.toFixed(2)}`],
+              content: ['Previous','Close', `${previousClose.toFixed(2)}`],
               position: 'end',
               backgroundColor: 'white',
               color: 'rgb(156, 163, 175)',
