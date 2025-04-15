@@ -1,14 +1,20 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import type { TwelveDataPriceUpdate } from "../types/websocket"
 
 const TWELVE_DATA_API_KEY = process.env.NEXT_PUBLIC_TWELVE_DATA_API_KEY
 
-interface TwelveDataPriceUpdate {
-  event: string
-  symbol: string
-  price: number
-  timestamp: number
+// Debounce helper function
+function debounce(
+  func: (price: number) => void,
+  wait: number
+): (price: number) => void {
+  let timeout: NodeJS.Timeout | null = null;
+  return (price: number) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => func(price), wait);
+  };
 }
 
 export function useStockWebSocket(symbol: string) {
@@ -24,6 +30,11 @@ export function useStockWebSocket(symbol: string) {
 
     const ws = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${TWELVE_DATA_API_KEY}`)
     
+    // Debounce the price updates to prevent too frequent re-renders
+    const debouncedSetPrice = debounce((newPrice: number) => {
+      setPrice(newPrice)
+    }, 500) // Update price at most every 500ms
+
     ws.onopen = () => {
       // Subscribe to the symbol
       ws.send(JSON.stringify({
@@ -39,7 +50,7 @@ export function useStockWebSocket(symbol: string) {
       try {
         const update: TwelveDataPriceUpdate = JSON.parse(event.data)
         if (update.event === "price" && update.symbol === symbol) {
-          setPrice(update.price)
+          debouncedSetPrice(update.price)
           setError(null) // Clear any previous errors on successful message
         }
       } catch (error) {

@@ -215,7 +215,7 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
         ticks: {
           maxRotation: 0,
           autoSkip: true,
-          maxTicksLimit: 6,
+          maxTicksLimit: 8,
           callback: (value) => {
             const date = new Date(data.labels[value as number])
             return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })

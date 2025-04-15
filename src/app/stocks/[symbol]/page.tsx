@@ -50,6 +50,9 @@ export default function StockPage() {
         axios.get(`/api/search?query=${symbol}`)
       ])
 
+      console.log('Raw intraday response:', timeSeriesResponse.data)
+      console.log('TimeSeriesByDay data structure:', timeSeriesResponse.data.timeSeriesByDay)
+
       // Find the matching stock from search results
       const stockInfo = searchResponse.data.data.find(
         (stock: StockSearchResult) => stock.symbol === symbol && stock.exchange === exchange
@@ -198,12 +201,12 @@ export default function StockPage() {
     }
   })
 
-  // Create array of time points from 9:30 AM to 4:00 PM in 5-minute intervals
+  // Create array of time points from 9:30 AM to 4:00 PM in 1-minute intervals
   const timePoints: string[] = []
   const startTime = 9 * 60 + 30 // 9:30 AM in minutes = 570
   const endTime = 16 * 60 // 4:00 PM in minutes = 960
   
-  for (let minutes = startTime; minutes <= endTime; minutes += 5) {
+  for (let minutes = startTime; minutes <= endTime; minutes += 1) {
     const hours = Math.floor(minutes / 60)
     const mins = minutes % 60
     const date = new Date()
@@ -211,28 +214,8 @@ export default function StockPage() {
     timePoints.push(date.toISOString())
   }
 
-  // Create a map of timestamp to price for quick lookup
-  const priceMap = new Map(
-    filteredTimeSeries.map(point => [point.timestamp, point.price])
-  )
-
-  // Find the last timestamp with actual data
-  const lastDataTimestamp = filteredTimeSeries.length > 0 
-    ? new Date(filteredTimeSeries[0].timestamp)
-    : null
-
+  // Initialize prices array with nulls for all time points
   let pricesArray = new Array(timePoints.length).fill(null)
-  pricesArray = [...priceMap.values()].reverse()
-  
-  // Set the last known price
-  if (stockData.price !== null) {
-    pricesArray[pricesArray.length - 1] = stockData.price
-  }
-
-  const chartData = {
-    labels: timePoints,
-    values: pricesArray
-  }
 
   // Update chart data based on market conditions
   if (!marketStatus && !isWeekend && currentTotalMinutes < marketOpenTime && currentDay === 1) {
@@ -241,10 +224,31 @@ export default function StockPage() {
     lastTradingDate.setDate(lastTradingDate.getDate() - (currentDay === 1 ? 3 : 1))
     const lastTradingDay = lastTradingDate.toISOString().split('T')[0]
     
-    if (stockData.timeSeriesByDay && stockData.timeSeriesByDay[lastTradingDay]) {
-      chartData.values = stockData.timeSeriesByDay[lastTradingDay].map(point => point.price).reverse()
-      stockData.previousClose = stockData.timeSeriesByDay[lastTradingDay][0].price
+    console.log('Monday pre-market - Looking for Friday data:', {
+      lastTradingDay,
+      availableDays: stockData.timeSeriesByDay ? Object.keys(stockData.timeSeriesByDay) : [],
+      foundData: stockData.timeSeriesByDay?.[lastTradingDay]
+    })
 
+    if (stockData.timeSeriesByDay && stockData.timeSeriesByDay[lastTradingDay]) {
+      const dayData = stockData.timeSeriesByDay[lastTradingDay]
+      console.log('Found historical data for day:', {
+        day: lastTradingDay,
+        dataPoints: dayData.length,
+        firstPoint: dayData[0],
+        lastPoint: dayData[dayData.length - 1]
+      })
+      // Map the historical data to the time points
+      pricesArray = timePoints.map(timePoint => {
+        const timeStr = new Date(timePoint).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        const matchingPoint = dayData.find(point => 
+          new Date(point.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) === timeStr
+        )
+        return matchingPoint ? matchingPoint.price : null
+      })
+      if (dayData.length > 0) {
+        stockData.previousClose = dayData[0].price
+      }
     }
   } else if (!marketStatus && !isWeekend && currentTotalMinutes < marketOpenTime) {
     // Before market hours on weekday - show previous day's data
@@ -252,8 +256,27 @@ export default function StockPage() {
     yesterday.setDate(yesterday.getDate() - 1)
     const yesterdayDate = yesterday.toISOString().split('T')[0]
     
+    console.log('Pre-market - Looking for yesterday data:', {
+      yesterdayDate,
+      availableDays: stockData.timeSeriesByDay ? Object.keys(stockData.timeSeriesByDay) : [],
+      foundData: stockData.timeSeriesByDay?.[yesterdayDate]
+    })
+
     if (stockData.timeSeriesByDay && stockData.timeSeriesByDay[yesterdayDate]) {
-      chartData.values = stockData.timeSeriesByDay[yesterdayDate].map(point => point.price).reverse()
+      const dayData = stockData.timeSeriesByDay[yesterdayDate]
+      console.log('Found yesterday data:', {
+        dataPoints: dayData.length,
+        firstPoint: dayData[0],
+        lastPoint: dayData[dayData.length - 1]
+      })
+      // Map the historical data to the time points
+      pricesArray = timePoints.map(timePoint => {
+        const timeStr = new Date(timePoint).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        const matchingPoint = dayData.find(point => 
+          new Date(point.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) === timeStr
+        )
+        return matchingPoint ? matchingPoint.price : null
+      })
     }
   } else if (!marketStatus && isWeekend) {
     // Weekend - show last trading day's data
@@ -262,37 +285,67 @@ export default function StockPage() {
     const lastTradingDay = lastTradingDate.toISOString().split('T')[0]
     
     if (stockData.timeSeriesByDay && stockData.timeSeriesByDay[lastTradingDay]) {
-      chartData.values = stockData.timeSeriesByDay[lastTradingDay].map(point => point.price).reverse()
+      const dayData = stockData.timeSeriesByDay[lastTradingDay]
+      // Map the historical data to the time points
+      pricesArray = timePoints.map(timePoint => {
+        const timeStr = new Date(timePoint).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        const matchingPoint = dayData.find(point => 
+          new Date(point.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) === timeStr
+        )
+        return matchingPoint ? matchingPoint.price : null
+      })
     }
-  } else if(marketStatus && livePrice){
-    console.log('Showing live price data:', {
-      livePrice
-    })
-    pricesArray = [...priceMap.values()].reverse()
+  } else if (marketStatus && livePrice) {
+    console.log('Showing live price data:', { livePrice })
+    // Map current day's data to time points
+    // pricesArray = timePoints.map(timePoint => {
+    //   const timeStr = new Date(timePoint).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    //   const matchingPoint = filteredTimeSeries.find(point => 
+    //     new Date(point.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) === timeStr
+    //   )
+    //   return matchingPoint ? matchingPoint.price : null
+    // })
+    
+    // // Update the latest price point with live data and set future points to null
+    // if (stockData.price !== null) {
+    //   const currentTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    //   const currentIndex = timePoints.findIndex(timePoint => 
+    //     new Date(timePoint).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) === currentTimeStr
+    //   )
+    //   if (currentIndex !== -1) {
+    //     pricesArray[currentIndex] = livePrice
+    //     // Set all future points to null
+    //     pricesArray = pricesArray.map((price, index) => index > currentIndex ? null : price)
+    //     console.log('live data Updated prices array:', pricesArray)
+    //   }
+    // }
+    const today = new Date(now)
+    const currentDay = today.toISOString().split('T')[0]
+    if (stockData.timeSeriesByDay && stockData.timeSeriesByDay[currentDay]) {
+      pricesArray = stockData.timeSeriesByDay[currentDay].map(point => point.price).reverse()
+    }  
     if (stockData.price !== null) {
       pricesArray[pricesArray.length - 1] = stockData.price
     }
-    chartData.values = pricesArray
-  } else if(marketStatus && !livePrice){
+  } else if (marketStatus && !livePrice) {
     console.log('Showing current day data (market open, no live price)')
-    // For non-live stocks, use the full market hours time points
-    pricesArray = [...priceMap.values()].reverse()
-    
-    // Set the last known price
-    if (stockData.price !== null) {
-      pricesArray[pricesArray.length - 1] = stockData.price
-    }
-    
-    console.log('Updated Prices:', pricesArray)
-    console.log('Last Price:', stockData.price)
-    console.log('chartData', chartData.values)
+    // Map current day's data to time points
+    const today = new Date(now)
+    const currentDay = today.toISOString().split('T')[0]
+    if (stockData.timeSeriesByDay && stockData.timeSeriesByDay[currentDay]) {
+      pricesArray = stockData.timeSeriesByDay[currentDay].map(point => point.price).reverse()
+    }  
 
-    chartData.values = pricesArray
+  }
+
+  const chartData = {
+    labels: timePoints,
+    values: pricesArray
   }
 
   console.log('Chart Data analysis:', {
     marketStatus,
-    lastDataTimestamp: lastDataTimestamp?.toISOString(),
+    lastDataTimestamp: filteredTimeSeries.length > 0 ? new Date(filteredTimeSeries[0].timestamp) : null,
     totalPoints: timePoints.length,
   })
 

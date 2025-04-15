@@ -25,11 +25,18 @@ export async function GET(
     const timeSeriesResponse = await axios.get<TwelveDataTimeSeries>(`${TWELVE_DATA_API_URL}/time_series`, {
       params: {
         symbol: symbol,
-        interval: "5min",
-        outputsize: 234, // 3 days of 5-minute data (78 * 3)
+        interval: "1min",
+        outputsize: 1170, // 3 days of 1-minute data (390 * 3)
         timezone: "America/New_York",
         apikey: TWELVE_DATA_API_KEY,
       },
+    })
+
+    console.log('Raw API response:', {
+      status: timeSeriesResponse.status,
+      dataPoints: timeSeriesResponse.data.values.length,
+      firstPoint: timeSeriesResponse.data.values[0],
+      lastPoint: timeSeriesResponse.data.values[timeSeriesResponse.data.values.length - 1]
     })
 
     const timeSeries = timeSeriesResponse.data
@@ -51,6 +58,15 @@ export async function GET(
       return acc
     }, {} as Record<string, Array<{ timestamp: string; price: number }>>)
 
+    console.log('Grouped by day:', {
+      totalDays: Object.keys(groupedByDay).length,
+      days: Object.keys(groupedByDay),
+      pointsPerDay: Object.entries(groupedByDay).map(([day, points]) => ({
+        day,
+        count: points.length
+      }))
+    })
+
     // Transform the data to match our StockData interface
     const stockData = {
       timeSeries: timeSeries.values.map((point) => ({
@@ -60,7 +76,15 @@ export async function GET(
       timeSeriesByDay: groupedByDay
     }
 
-    console.log('stockData intraday:', stockData)
+    console.log('Final stockData structure:', {
+      totalTimeSeriesPoints: stockData.timeSeries.length,
+      timeSeriesByDayKeys: Object.keys(stockData.timeSeriesByDay),
+      sampleDay: Object.keys(stockData.timeSeriesByDay)[0] ? {
+        day: Object.keys(stockData.timeSeriesByDay)[0],
+        points: stockData.timeSeriesByDay[Object.keys(stockData.timeSeriesByDay)[0]].length
+      } : null
+    })
+
     return NextResponse.json(stockData)
   } catch (error) {
     console.error("Error fetching intraday stock data:", error)
