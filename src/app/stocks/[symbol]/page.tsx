@@ -9,12 +9,16 @@ import { useStockWebSocket } from "@/hooks/use-stock-websocket"
 import { isMarketOpen } from "@/lib/market-status"
 import { Skeleton } from "@/components/ui/skeleton"
 import { StockSearchResult } from "@/types/search"
+import { Star } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { useWatchlist } from "@/hooks/use-watchlist"
 
 interface StockData {
   price: number | null
   change: number
   changePercent: number
   previousClose: number
+  open: number
   timeSeries: {
     timestamp: string
     price: number
@@ -37,6 +41,7 @@ export default function StockPage() {
   const [error, setError] = useState<string | null>(null)
   const [companyName, setCompanyName] = useState<string>("")
   const { price: livePrice, error: wsError } = useStockWebSocket(symbol)
+  const { isInWatchlist, toggleStock } = useWatchlist()
 
   const fetchStockData = useCallback(async () => {
     try {
@@ -278,7 +283,16 @@ export default function StockPage() {
         return matchingPoint ? matchingPoint.price : null
       })
     }
-  } else if (!marketStatus && isWeekend) {
+  } else if (!marketStatus && !isWeekend && currentTotalMinutes > marketOpenTime) {
+    console.log('showing current day data, market closed')
+    // Map current day's data to time points
+    const today = new Date(now)
+    const currentDay = today.toISOString().split('T')[0]
+    if (stockData.timeSeriesByDay && stockData.timeSeriesByDay[currentDay]) {
+      pricesArray = stockData.timeSeriesByDay[currentDay].map(point => point.price).reverse()
+    }  
+  }
+  else if (!marketStatus && isWeekend) {
     // Weekend - show last trading day's data
     const lastTradingDate = new Date(now)
     lastTradingDate.setDate(lastTradingDate.getDate() - (currentDay === 0 ? 2 : 1))
@@ -357,6 +371,7 @@ export default function StockPage() {
   const highPrice = Math.max(...prices)
   const lowPrice = Math.min(...prices)
 
+  console.log('Stock Data:', stockData)
   return (
     <div className="container mx-auto p-4">
       <div className="mb-8">
@@ -367,10 +382,23 @@ export default function StockPage() {
           </>
         ) : (
           <>
-              <h1 className="text-3xl font-bold">{companyName}</h1>
-            <div className="text-md text-muted-foreground mt-2 mb-4">{exchange}: {symbol}</div>
-            
-          
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold">{companyName}</h1>
+                <div className="text-md text-muted-foreground mt-2 mb-4">{exchange}: {symbol}</div>
+              </div>
+              <Button
+                variant={isInWatchlist(symbol, exchange) ? "default" : "outline"}
+                size="icon"
+                onClick={() => toggleStock({ symbol, exchange })}
+                className="h-10 w-10"
+              >
+                <Star className={cn("h-5 w-5", isInWatchlist(symbol, exchange) ? "fill-current" : "fill-none")} />
+                <span className="sr-only">
+                  {isInWatchlist(symbol, exchange) ? "Remove from watchlist" : "Add to watchlist"}
+                </span>
+              </Button>
+            </div>
           </>
         )}
         <div className="mt-2 flex items-center gap-4">
@@ -432,8 +460,8 @@ export default function StockPage() {
         ) : (
           <>
             <div className="p-4 rounded-lg border">
-              <div className="text-sm text-gray-500">Previous Close</div>
-              <div className="text-lg font-semibold">${stockData.previousClose.toFixed(2)}</div>
+              <div className="text-sm text-gray-500">Open</div>
+              <div className="text-lg font-semibold">${stockData.open.toFixed(2)}</div>
             </div>
             <div className="p-4 rounded-lg border">
               <div className="text-sm text-gray-500">Day Low</div>
@@ -442,6 +470,10 @@ export default function StockPage() {
             <div className="p-4 rounded-lg border">
               <div className="text-sm text-gray-500">Day High</div>
               <div className="text-lg font-semibold">${highPrice.toFixed(2)}</div>
+            </div>
+            <div className="p-4 rounded-lg border">
+              <div className="text-sm text-gray-500">Previous Close</div>
+              <div className="text-lg font-semibold">${stockData.previousClose.toFixed(2)}</div>
             </div>
           </>
         )}

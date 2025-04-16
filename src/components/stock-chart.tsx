@@ -103,22 +103,30 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
   }
 
   const chartData: ChartData<"line"> = {
-    labels: data.labels.map(label => {
-      const date = new Date(label)
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }),
+    labels: [
+      ...data.labels.map(label => {
+        const date = new Date(label)
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }),
+      // Add empty labels for the extension
+      ...Array(20).fill('')
+    ],
     datasets: [
       {
         label: "Price",
-        data: data.values.map((value, index) => {
-          if (value === null) {
-            // Find the last valid value before this point
-            const previousValues = data.values.slice(0, index)
-            const lastValidValue = previousValues.reverse().find(v => v !== null)
-            return lastValidValue !== undefined ? Number(lastValidValue) : NaN
-          }
-          return Number(value)
-        }),
+        data: [
+          ...data.values.map((value, index) => {
+            if (value === null) {
+              // Find the last valid value before this point
+              const previousValues = data.values.slice(0, index)
+              const lastValidValue = previousValues.reverse().find(v => v !== null)
+              return lastValidValue !== undefined ? Number(lastValidValue) : NaN
+            }
+            return Number(value)
+          }),
+          // Add null values for the extension
+          ...Array(20).fill(null)
+        ],
         borderColor: livePrice !== undefined && livePrice !== null 
           ? ((data.values?.[data.values.length - 1] ?? 0) >= previousClose ? "rgb(34, 197, 94)" : "rgb(239, 68, 68)")
           : "rgb(156, 163, 175)", // gray color for historical data
@@ -140,9 +148,10 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
     },
     layout: {
       padding: {
-        right: 100,
+        right: 10,
         top: 20,
-        bottom: 10
+        bottom: 10,
+        left: 10
       }
     },
     plugins: {
@@ -178,7 +187,7 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
             yMin: previousClose,
             yMax: previousClose,
             xMin: 0,
-            xMax: data.labels.length - 1,
+            xMax: data.labels.length + 20,
             borderColor: 'rgb(156, 163, 175)',
             borderDash: [5, 5],
             borderWidth: 1,
@@ -211,16 +220,21 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
         grid: {
           display: false,
         },
+        offset: true,
         type: 'category',
         ticks: {
           maxRotation: 0,
           autoSkip: true,
           maxTicksLimit: 8,
           callback: (value) => {
+            // Only show time labels for actual data points
+            if (typeof value === 'number' && value >= data.labels.length) return '';
             const date = new Date(data.labels[value as number])
             return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }
-        }
+        },
+        min: 0,
+        max: data.labels.length + 20
       },
       y: {
         grid: {
