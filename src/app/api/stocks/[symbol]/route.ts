@@ -20,15 +20,25 @@ export async function GET(
       },
     })
 
+    console.log('Quote API Response:', {
+      status: quoteResponse.status,
+      data: quoteResponse.data,
+      symbol: symbol,
+    })
+
     const quote = quoteResponse.data
 
-    return NextResponse.json({
+    const response = {
       price: parseFloat(quote.close),
       change: parseFloat(quote.change),
       changePercent: parseFloat(quote.percent_change),
       previousClose: parseFloat(quote.previous_close),
       open: parseFloat(quote.open),
-    })
+    }
+
+    console.log('Processed quote response:', response)
+
+    return NextResponse.json(response)
   } catch (error) {
     console.error("Error fetching stock quote:", error)
     return NextResponse.json(

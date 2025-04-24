@@ -445,7 +445,7 @@ export default function StockPage() {
             data={chartData as { labels: string[]; values: (number | null)[] }}
             livePrice={marketStatus ? livePrice : null}
             title={marketStatus ? "Today's Price" : isWeekend ? "Last Trading Day" : "Today's Price"}
-            previousClose={!marketStatus && !isWeekend && currentTotalMinutes < marketOpenTime ? stockData.previousClose : (stockData.price ?? stockData.previousClose)}
+            previousClose={stockData.previousClose}
           />
         </div>
       )}
@@ -474,10 +474,11 @@ export default function StockPage() {
             </div>
             <div className="p-4 rounded-lg border">
               <div className="text-sm text-gray-500">Previous Close</div>
-              <div className="text-lg font-semibold">${!marketStatus && !isWeekend && currentTotalMinutes < marketOpenTime ? stockData.previousClose.toFixed(2) : (stockData.price ?? stockData.previousClose).toFixed(2)}</div>
+              <div className="text-lg font-semibold">${stockData.previousClose.toFixed(2)}</div>
             </div>
           </>
         )}
+        
       </div>
     </div>
   )
