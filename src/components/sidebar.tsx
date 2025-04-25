@@ -3,12 +3,13 @@
 import { Home } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-
+import { useWatchlist } from "@/hooks/use-watchlist"
 import { cn } from "@/lib/utils"
 import { AddStockDialog } from "@/components/add-stock-dialog"
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { toggleStock } = useWatchlist()
 
   return (
     <div className="flex h-full flex-col gap-2">
@@ -23,7 +24,7 @@ export function Sidebar() {
           <Home className="h-6 w-6" />
           <span className="hidden lg:inline-block">Dashboard</span>
         </Link>
-        <AddStockDialog />
+        <AddStockDialog onToggleStock={toggleStock} />
       </div>
       <div className="flex-1 overflow-auto py-2">
         <nav className="grid items-start gap-2 px-2 text-sm font-medium">
