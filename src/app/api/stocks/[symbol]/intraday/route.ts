@@ -13,19 +13,15 @@ interface TwelveDataTimeSeries {
   values: TwelveDataTimeSeriesPoint[]
 }
 
-type Props = {
-  params: {
-    symbol: string
-  }
-}
+
 
 export async function GET(
-  request: NextRequest,
-  { params }: Props
+  request: NextRequest
 ) {
   try {
-    // Extract symbol from symbol-exchange format
-    const symbol = params.symbol.split('-')[0]
+    // Get symbol from URL segments
+    const segments = request.nextUrl.pathname.split('/')
+    const symbol = segments[segments.length - 2].split('-')[0]
 
     // Get intraday time series data
     const timeSeriesResponse = await axios.get<TwelveDataTimeSeries>(`${TWELVE_DATA_API_URL}/time_series`, {

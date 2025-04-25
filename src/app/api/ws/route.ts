@@ -1,5 +1,5 @@
 import { WebSocketServer, WebSocket as WsWebSocket } from "ws"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
 import { IncomingMessage } from "http"
 import { Socket } from "net"
@@ -20,7 +20,7 @@ interface TwelveDataMessage {
   symbol: string;
 }
 
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   if ((await headers()).get("upgrade") !== "websocket") {
     return new NextResponse("Expected Upgrade: websocket", { status: 426 })
   }
@@ -92,12 +92,12 @@ export async function GET(req: Request) {
     })
 
     // Convert Request to IncomingMessage for handleUpgrade
-    const reqSocket = (req as unknown as { socket: Socket }).socket
-    const incomingMessage = req as unknown as IncomingMessage
+    const reqSocket = (request as unknown as { socket: Socket }).socket
+    const incomingMessage = request as unknown as IncomingMessage
     incomingMessage.socket = reqSocket
 
     wss.handleUpgrade(incomingMessage, reqSocket, Buffer.alloc(0), (ws) => {
-      wss.emit("connection", ws, req)
+      wss.emit("connection", ws, request)
       resolve({ socket: ws, response: new Response(null, { status: 101 }) })
     })
   })

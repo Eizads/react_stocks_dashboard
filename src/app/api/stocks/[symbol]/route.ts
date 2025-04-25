@@ -8,8 +8,9 @@ export async function GET(
   request: NextRequest
 ) {
   try {
-    // Extract symbol from URL
-    const symbol = request.url.split('/stocks/')[1].split('/')[0].split('-')[0]
+    // Get symbol from URL segments
+    const segments = request.nextUrl.pathname.split('/')
+    const symbol = segments[segments.length - 1].split('-')[0]
 
     // Get current price and change data
     const quoteResponse = await axios.get(`${TWELVE_DATA_API_URL}/quote`, {
