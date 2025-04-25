@@ -4,19 +4,12 @@ import axios from "axios"
 const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY
 const TWELVE_DATA_API_URL = "https://api.twelvedata.com"
 
-type Props = {
-  params: {
-    symbol: string
-  }
-}
-
 export async function GET(
-  request: NextRequest,
-  { params }: Props
+  request: NextRequest
 ) {
   try {
-    // Extract symbol from symbol-exchange format
-    const symbol = params.symbol.split('-')[0]
+    // Extract symbol from URL
+    const symbol = request.url.split('/stocks/')[1].split('/')[0].split('-')[0]
 
     // Get current price and change data
     const quoteResponse = await axios.get(`${TWELVE_DATA_API_URL}/quote`, {
