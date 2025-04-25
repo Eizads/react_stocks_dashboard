@@ -1,16 +1,16 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import axios from "axios"
 
 const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY
 const TWELVE_DATA_API_URL = "https://api.twelvedata.com"
 
 export async function GET(
-  request: Request,
-  { params }: { params: { symbol: string } }
+  request: NextRequest,
+  context: { params: { symbol: string } }
 ) {
   try {
     // Extract symbol from symbol-exchange format
-    const symbol = params.symbol.split('-')[0]
+    const symbol = context.params.symbol.split('-')[0]
 
     // Get current price and change data
     const quoteResponse = await axios.get(`${TWELVE_DATA_API_URL}/quote`, {
@@ -46,4 +46,4 @@ export async function GET(
       { status: 500 }
     )
   }
-} 
+}

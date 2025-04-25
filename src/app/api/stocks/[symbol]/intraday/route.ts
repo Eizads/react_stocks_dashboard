@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import axios from "axios"
 
 const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY
@@ -14,12 +14,12 @@ interface TwelveDataTimeSeries {
 }
 
 export async function GET(
-  request: Request,
-  { params }: { params: { symbol: string } }
+  request: NextRequest,
+  context: { params: { symbol: string } }
 ) {
   try {
     // Extract symbol from symbol-exchange format
-    const symbol = params.symbol.split('-')[0]
+    const symbol = context.params.symbol.split('-')[0]
 
     // Get intraday time series data
     const timeSeriesResponse = await axios.get<TwelveDataTimeSeries>(`${TWELVE_DATA_API_URL}/time_series`, {
