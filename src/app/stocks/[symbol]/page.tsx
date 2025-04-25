@@ -312,28 +312,7 @@ export default function StockPage() {
     }
   } else if (marketStatus && livePrice) {
     console.log('Showing live price data:', { livePrice })
-    // Map current day's data to time points
-    // pricesArray = timePoints.map(timePoint => {
-    //   const timeStr = new Date(timePoint).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    //   const matchingPoint = filteredTimeSeries.find(point => 
-    //     new Date(point.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) === timeStr
-    //   )
-    //   return matchingPoint ? matchingPoint.price : null
-    // })
-    
-    // // Update the latest price point with live data and set future points to null
-    // if (stockData.price !== null) {
-    //   const currentTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    //   const currentIndex = timePoints.findIndex(timePoint => 
-    //     new Date(timePoint).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) === currentTimeStr
-    //   )
-    //   if (currentIndex !== -1) {
-    //     pricesArray[currentIndex] = livePrice
-    //     // Set all future points to null
-    //     pricesArray = pricesArray.map((price, index) => index > currentIndex ? null : price)
-    //     console.log('live data Updated prices array:', pricesArray)
-    //   }
-    // }
+   
     const today = new Date(now)
     const currentDay = today.toISOString().split('T')[0]
     if (stockData.timeSeriesByDay && stockData.timeSeriesByDay[currentDay]) {
@@ -416,11 +395,17 @@ export default function StockPage() {
               <span
                 className={cn(
                   "text-lg",
-                  stockData.change >= 0 ? "text-green-500" : "text-red-500"
+                  ((livePrice && stockData.previousClose) ? (livePrice - stockData.previousClose) : stockData.change) >= 0 
+                    ? "text-green-500" 
+                    : "text-red-500"
                 )}
               >
-                {stockData.change >= 0 ? "+" : ""}
-                {stockData.change.toFixed(2)} ({stockData.changePercent.toFixed(2)}%)
+                {((livePrice && stockData.previousClose) ? (livePrice - stockData.previousClose) : stockData.change) >= 0 ? "+" : ""}
+                {((livePrice && stockData.previousClose) 
+                  ? (livePrice - stockData.previousClose).toFixed(2) 
+                  : stockData.change.toFixed(2))} ({((livePrice && stockData.previousClose) 
+                    ? ((livePrice - stockData.previousClose) / stockData.previousClose * 100) 
+                    : stockData.changePercent).toFixed(2)}%)
               </span>
             </>
           )}
