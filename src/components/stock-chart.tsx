@@ -43,6 +43,12 @@ interface StockChartProps {
 
 export function StockChart({ data, livePrice, title = "Stock Price", previousClose }: StockChartProps) {
   console.log('Chart received data:', data)
+  // This is the number of labels to add to the chart to extend the chart to the right
+  let extraLabels = 20
+  if (window.innerWidth < 900) {
+    extraLabels = 60
+  }
+
   
   const chartRef = useRef<ChartJS<"line">>(null)
 
@@ -92,25 +98,25 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
     }
   }, [livePrice])
 
-  useEffect(() => {
-    const handleResize = () => {
-      if (chartRef.current) {
-        chartRef.current.resize()
-        const chart = chartRef.current
-        if (chart.options.scales && chart.options.scales.x && chart.options.scales.x.ticks) {
-          chart.options.scales.x.ticks.maxTicksLimit = window.innerWidth < 1024 ? 4 : 8
-          chart.update()
-        }
-      }
-    }
+  // useEffect(() => {
+  //   const handleResize = () => {
+  //     if (chartRef.current) {
+  //       chartRef.current.resize()
+  //       const chart = chartRef.current
+  //       if (chart.options.scales && chart.options.scales.x && chart.options.scales.x.ticks) {
+  //         chart.options.scales.x.ticks.maxTicksLimit = window.innerWidth < 1024 ? 4 : 8
+  //         chart.update()
+  //       }
+  //     }
+  //   }
 
-    window.addEventListener('resize', handleResize)
-    handleResize() // Initial call to set the correct ticks
+  //   window.addEventListener('resize', handleResize)
+  //   handleResize() // Initial call to set the correct ticks
 
-    return () => {
-      window.removeEventListener('resize', handleResize)
-    }
-  }, [])
+  //   return () => {
+  //     window.removeEventListener('resize', handleResize)
+  //   }
+  // }, [])
 
   // Add error handling for missing data
   if (!data?.labels?.length || !data?.values?.length) {
@@ -129,7 +135,7 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }),
       // Add empty labels for the extension
-      ...Array(20).fill('')
+      ...Array(extraLabels).fill('')
     ],
     datasets: [
       {
@@ -145,7 +151,7 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
             return Number(value)
           }),
           // Add null values for the extension
-          ...Array(20).fill(null)
+          ...Array(extraLabels).fill(null)
         ],
         borderColor: livePrice !== undefined && livePrice !== null 
           ? ((data.values?.[data.values.length - 1] ?? 0) >= previousClose ? "rgb(34, 197, 94)" : "rgb(239, 68, 68)")
@@ -169,7 +175,7 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
     layout: {
       padding: {
         right: 10,
-        top: 20,
+        top: 60,
         bottom: 10,
         left: 10
       }
@@ -207,7 +213,7 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
             yMin: previousClose,
             yMax: previousClose,
             xMin: 0,
-            xMax: data.labels.length + 20,
+            xMax: data.labels.length + extraLabels,
             borderColor: 'rgb(156, 163, 175)',
             borderDash: [5, 5],
             borderWidth: 1,
@@ -218,7 +224,7 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
               backgroundColor: 'white',
               color: 'rgb(156, 163, 175)',
               font: {
-                size: 12
+                size: 10
               },
               textAlign: 'left',
               xAdjust: 0,
@@ -227,7 +233,7 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
                 left: 0,
                 top: 0,
                 bottom: 0,
-                right: 10
+                right: 0
               },
               z: 1000
             }
@@ -244,17 +250,19 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
         type: 'category',
         ticks: {
           maxRotation: 0,
-          autoSkip: true,
-          maxTicksLimit: window.innerWidth < 1024 ? 4 : 8, // Adjust ticks based on screen size
+          autoSkip: false,
+          maxTicksLimit: 4,
           callback: (value) => {
-            // Only show time labels for actual data points
-            if (typeof value === 'number' && value >= data.labels.length) return '';
-            const date = new Date(data.labels[value as number])
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            // Only show specific time labels
+            const specificTimes = ['10:00 AM', '12:00 PM', '02:00 PM', '04:00 PM'];
+            const date = new Date(data.labels[value as number]);
+            const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true});
+            // console.log('Time string:', timeString)
+            return specificTimes.includes(timeString) ? timeString : '';
           }
         },
         min: 0,
-        max: data.labels.length + 20
+        max: data.labels.length + extraLabels
       },
       y: {
         grid: {
