@@ -92,6 +92,26 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
     }
   }, [livePrice])
 
+  useEffect(() => {
+    const handleResize = () => {
+      if (chartRef.current) {
+        chartRef.current.resize()
+        const chart = chartRef.current
+        if (chart.options.scales && chart.options.scales.x && chart.options.scales.x.ticks) {
+          chart.options.scales.x.ticks.maxTicksLimit = window.innerWidth < 1024 ? 4 : 8
+          chart.update()
+        }
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    handleResize() // Initial call to set the correct ticks
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
   // Add error handling for missing data
   if (!data?.labels?.length || !data?.values?.length) {
     console.log('No data available for chart')
@@ -225,7 +245,7 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
         ticks: {
           maxRotation: 0,
           autoSkip: true,
-          maxTicksLimit: 8,
+          maxTicksLimit: window.innerWidth < 1024 ? 4 : 8, // Adjust ticks based on screen size
           callback: (value) => {
             // Only show time labels for actual data points
             if (typeof value === 'number' && value >= data.labels.length) return '';
@@ -257,8 +277,10 @@ export function StockChart({ data, livePrice, title = "Stock Price", previousClo
   }
 
   return (
-    <div className="h-[400px] w-full">
+
+    <div className="h-[400px] overflow-hidden relative">
       <Line ref={chartRef} data={chartData} options={options} />
     </div>
+    
   )
 } 

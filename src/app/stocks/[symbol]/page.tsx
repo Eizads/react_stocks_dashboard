@@ -12,6 +12,7 @@ import { StockSearchResult } from "@/types/search"
 import { Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useWatchlist } from "@/hooks/use-watchlist"
+import { useSidebar } from "@/components/ui/sidebar";
 
 interface StockData {
   price: number | null
@@ -42,7 +43,9 @@ export default function StockPage() {
   const [companyName, setCompanyName] = useState<string>("")
   const { price: livePrice, error: wsError } = useStockWebSocket(symbol)
   const { isInWatchlist, toggleStock } = useWatchlist()
+  const { open } = useSidebar()
 
+  console.log('is sidebar open', open)
   const fetchStockData = useCallback(async () => {
     try {
       const isOpen = isMarketOpen()
@@ -120,11 +123,11 @@ export default function StockPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-4">
-        <div className="mb-8">
+      <div className={`container mx-auto p-4 w-full overflow-hidden w-full`}>
+        <div className="mb-8 overflow-hidden">
           <Skeleton className="h-10 w-32" /> {/* Symbol */}
           <Skeleton className="h-4 w-24 mt-1" /> {/* Exchange */}
-          <div className="mt-2 flex items-center gap-4">
+          <div className="mt-2 flex flex-wrap items-center gap-4">
             <Skeleton className="h-8 w-24" /> {/* Price */}
             <Skeleton className="h-6 w-32" /> {/* Change */}
             <Skeleton className="h-4 w-24" /> {/* Market Status */}
@@ -133,7 +136,7 @@ export default function StockPage() {
 
         <Skeleton className="h-[400px] w-full mb-8" /> {/* Chart */}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="p-4 rounded-lg border">
               <Skeleton className="h-4 w-24 mb-2" /> {/* Label */}
@@ -353,8 +356,8 @@ export default function StockPage() {
 
   console.log('Stock Data:', stockData)
   return (
-    <div className="container mx-auto p-4">
-      <div className="mb-8">
+    <div className={`container mx-auto p-4 overflow-hidden ${open ? 'w-[calc(100%-100px)]' : 'w-full'}`}>
+      <div className="mb-8 overflow-hidden">
         {!symbol ? (
           <>
             <Skeleton className="h-10 w-32" />
@@ -362,16 +365,16 @@ export default function StockPage() {
           </>
         ) : (
           <>
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold">{companyName}</h1>
-                <div className="text-md text-muted-foreground mt-2 mb-4">{exchange}: {symbol}</div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-3xl font-bold truncate">{companyName}</h1>
+                <div className="text-md text-muted-foreground mt-2 mb-4 truncate">{exchange}: {symbol}</div>
               </div>
               <Button
                 variant={isInWatchlist(symbol, exchange) ? "default" : "outline"}
                 size="icon"
                 onClick={() => toggleStock({ symbol, exchange })}
-                className="h-10 w-10"
+                className="h-10 w-10 flex-shrink-0"
               >
                 <Star className={cn("h-5 w-5", isInWatchlist(symbol, exchange) ? "fill-current" : "fill-none")} />
                 <span className="sr-only">
@@ -381,7 +384,7 @@ export default function StockPage() {
             </div>
           </>
         )}
-        <div className="mt-2 flex items-center gap-4">
+        <div className="mt-2 flex flex-wrap items-center gap-4">
           {currentPrice === null ? (
             <>
               <Skeleton className="h-8 w-24" />
@@ -394,7 +397,7 @@ export default function StockPage() {
               </span>
               <span
                 className={cn(
-                  "text-lg",
+                  "text-lg break-normal",
                   ((livePrice && stockData.previousClose) ? (livePrice - stockData.previousClose) : stockData.change) >= 0 
                     ? "text-green-500" 
                     : "text-red-500"
@@ -409,16 +412,18 @@ export default function StockPage() {
               </span>
             </>
           )}
-          {marketStatus ? (
-            <span className="text-sm text-green-500">Market Open</span>
-          ) : (
-            <span className="text-sm text-gray-500">Market Closed</span>
-          )}
-          {(wsError || !livePrice) && (
-            <span className="text-sm text-red-500">
-              Live updates unavailable
-            </span>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {marketStatus ? (
+              <span className="text-sm text-green-500">Market Open</span>
+            ) : (
+              <span className="text-sm text-gray-500">Market Closed</span>
+            )}
+            {(wsError || !livePrice) && (
+              <span className="text-sm text-red-500">
+                Live updates unavailable
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -435,7 +440,7 @@ export default function StockPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {!stockData ? (
           [...Array(3)].map((_, i) => (
             <div key={i} className="p-4 rounded-lg border">
@@ -463,7 +468,6 @@ export default function StockPage() {
             </div>
           </>
         )}
-        
       </div>
     </div>
   )
