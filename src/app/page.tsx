@@ -1,8 +1,7 @@
-
 export default function Home() {
   return (
-    <div className="h-full"   style={{
-              backgroundImage: 'url("/banner1.jpg")',
+    <div className="h-full" style={{
+              backgroundImage: `url("${process.env.NEXT_PUBLIC_BASE_PATH || ''}/banner1.jpg")`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
