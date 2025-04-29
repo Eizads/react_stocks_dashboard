@@ -13,7 +13,7 @@ import { Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useWatchlist } from "@/hooks/use-watchlist"
 import { useSidebar } from "@/components/ui/sidebar";
-
+import { BASE_PATH } from "@/config";
 interface StockData {
   price: number | null
   change: number
@@ -53,9 +53,9 @@ export default function StockPage() {
       
       // Make API calls in parallel
       const [quoteResponse, timeSeriesResponse, searchResponse] = await Promise.all([
-        axios.get(`/api/stocks/${symbol}`),
-        axios.get(`/api/stocks/${symbol}/intraday`),
-        axios.get(`/api/search?query=${symbol}`)
+        axios.get(`${BASE_PATH}/api/stocks/${symbol}`),
+        axios.get(`${BASE_PATH}/api/stocks/${symbol}/intraday`),
+        axios.get(`${BASE_PATH}/api/search?query=${symbol}`)
       ])
 
       console.log('Raw intraday response:', timeSeriesResponse.data)
