@@ -1,7 +1,8 @@
+import { BASE_PATH } from "@/config";
 export default function Home() {
   return (
     <div className="h-full" style={{
-              backgroundImage: `url("${process.env.NEXT_PUBLIC_BASE_PATH || ''}/banner1.jpg")`,
+              backgroundImage: `url("${BASE_PATH}/banner1.jpg")`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
