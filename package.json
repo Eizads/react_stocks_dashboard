@@ -2,7 +2,6 @@
   "name": "react_stocks_dashboard",
   "version": "0.1.0",
   "private": true,
-  "homepage": "/react-stocks-dashboard",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
