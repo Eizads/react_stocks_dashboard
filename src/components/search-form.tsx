@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { useDebounce } from "@/hooks/use-debounce"
 import axios from "axios"
 import { cn } from "@/lib/utils"
-
+import { BASE_PATH } from "@/config"
 import { StockSearchResult, SearchResponse } from "@/types/search"
 
 interface SearchFormProps {
@@ -36,7 +36,7 @@ export function SearchForm({ className, onSelect, navigateOnSelect = false }: Se
 
       try {
         const response = await axios.get<SearchResponse>(
-          `/api/search?query=${encodeURIComponent(debouncedSearchQuery)}`
+          `${BASE_PATH}/api/search?query=${encodeURIComponent(debouncedSearchQuery)}`
         )
         setResults(response.data.data)
       } catch {
