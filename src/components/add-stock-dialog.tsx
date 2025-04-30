@@ -39,7 +39,7 @@ export function AddStockDialog({ onToggleStock }: AddStockDialogProps) {
           <span className="sr-only">Add stock</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Add Stock</DialogTitle>
           <DialogDescription>

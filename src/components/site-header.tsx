@@ -38,7 +38,7 @@ export function SiteHeader() {
         <Separator orientation="vertical" className="mr-2 h-4" />
         <Breadcrumb className="hidden sm:block">
           <BreadcrumbItem>
-            <BreadcrumbLink href="/">
+            <BreadcrumbLink href={process.env.NEXT_PUBLIC_BASE_PATH || ""}>
               Stocks Dashboard
             </BreadcrumbLink>
           </BreadcrumbItem>

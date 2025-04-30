@@ -356,7 +356,7 @@ export default function StockPage() {
 
   console.log('Stock Data:', stockData)
   return (
-    <div className={`container mx-auto p-4 overflow-hidden ${open ? 'w-[calc(100%-100px)]' : 'w-full'}`}>
+    <div className={`container mx-auto p-4 overflow-hidden ${open ? 'md:w-[calc(100%-100px)]' : 'w-full'}`}>
       <div className="mb-8 overflow-hidden">
         {!symbol ? (
           <>

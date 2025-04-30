@@ -40,7 +40,9 @@ export function AppSidebar() {
                   <Home className="h-6 w-6" />
                   <span className="hidden lg:inline-block">Dashboard</span>
                 </Link>
+
                 <AddStockDialog onToggleStock={toggleStock} />
+              
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>

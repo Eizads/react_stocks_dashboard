@@ -72,9 +72,9 @@ export function SearchForm({ className, onSelect, navigateOnSelect = false }: Se
         />
       </div>
       {(isLoading || results.length > 0 || error) && (
-        <div className="absolute left-0 right-0 top-20 max-h-[60vh] overflow-y-auto rounded-md border bg-background shadow-lg">
+        <div className="absolute left-0 right-0 top-23 -mx-4 max-h-[50vh] overflow-y-auto rounded-md border bg-background shadow-lg">
           {isLoading ? (
-            <div className="flex items-center justify-center p-4">
+            <div className="flex items-center justify-center p-4 w-full">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             </div>
           ) : error ? (
