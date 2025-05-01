@@ -452,19 +452,19 @@ export default function StockPage() {
           <>
             <div className="p-4 rounded-lg border">
               <div className="text-sm text-gray-500">Open</div>
-              <div className="text-lg font-semibold">${stockData.open.toFixed(2)}</div>
+              <div className="text-lg font-semibold">{stockData.open.toFixed(2)}</div>
             </div>
             <div className="p-4 rounded-lg border">
               <div className="text-sm text-gray-500">Day Low</div>
-              <div className="text-lg font-semibold">${lowPrice.toFixed(2)}</div>
+              <div className="text-lg font-semibold">{lowPrice.toFixed(2)}</div>
             </div>
             <div className="p-4 rounded-lg border">
               <div className="text-sm text-gray-500">Day High</div>
-              <div className="text-lg font-semibold">${highPrice.toFixed(2)}</div>
+              <div className="text-lg font-semibold">{highPrice.toFixed(2)}</div>
             </div>
             <div className="p-4 rounded-lg border">
               <div className="text-sm text-gray-500">Previous Close</div>
-              <div className="text-lg font-semibold">${stockData.previousClose.toFixed(2)}</div>
+              <div className="text-lg font-semibold">{stockData.previousClose.toFixed(2)}</div>
             </div>
           </>
         )}
