@@ -393,7 +393,7 @@ export default function StockPage() {
           ) : (
             <>
               <span className="text-2xl font-semibold">
-                ${currentPrice?.toFixed(2) ?? 'N/A'}
+                {currentPrice?.toFixed(2) ?? 'N/A'}
               </span>
               <span
                 className={cn(
