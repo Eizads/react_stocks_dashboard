@@ -1,63 +1,67 @@
-"use client"
+"use client";
 
-import { Search } from "lucide-react"
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { Search } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-import { useDebounce } from "@/hooks/use-debounce"
-import axios from "axios"
-import { cn } from "@/lib/utils"
-import { BASE_PATH } from "@/config"
-import { StockSearchResult, SearchResponse } from "@/types/search"
+import { useDebounce } from "@/hooks/use-debounce";
+import axios from "axios";
+import { cn } from "@/lib/utils";
+import { BASE_PATH } from "@/config";
+import { StockSearchResult, SearchResponse } from "@/types/search";
 
 interface SearchFormProps {
-  className?: string
-  onSelect?: (stock: StockSearchResult) => void
-  navigateOnSelect?: boolean
+  className?: string;
+  onSelect?: (stock: StockSearchResult) => void;
+  navigateOnSelect?: boolean;
 }
 
-export function SearchForm({ className, onSelect, navigateOnSelect = false }: SearchFormProps) {
-  const router = useRouter()
-  const [searchQuery, setSearchQuery] = useState("")
-  const [results, setResults] = useState<StockSearchResult[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const debouncedSearchQuery = useDebounce(searchQuery, 500)
+export function SearchForm({
+  className,
+  onSelect,
+  navigateOnSelect = false,
+}: SearchFormProps) {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [results, setResults] = useState<StockSearchResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
   useEffect(() => {
     const fetchStocks = async () => {
       if (!debouncedSearchQuery.trim()) {
-        setResults([])
-        return
+        setResults([]);
+        return;
       }
 
-      setIsLoading(true)
-      setError(null)
+      setIsLoading(true);
+      setError(null);
 
       try {
         const response = await axios.get<SearchResponse>(
-          `${BASE_PATH}/api/search?query=${encodeURIComponent(debouncedSearchQuery)}`
-        )
-        setResults(response.data.data)
+          `${BASE_PATH}/api/search?query=${encodeURIComponent(debouncedSearchQuery)}`,
+        );
+        setResults(response.data.data);
       } catch {
-        setError("Failed to fetch stocks. Please try again.")
-        setResults([])
+        setError("Failed to fetch stocks. Please try again.");
+        setResults([]);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchStocks()
-  }, [debouncedSearchQuery])
+    fetchStocks();
+  }, [debouncedSearchQuery]);
 
   const handleStockClick = (stock: StockSearchResult) => {
-    setSearchQuery("")
-    setResults([])
-    onSelect?.(stock)
+    setSearchQuery("");
+    setResults([]);
+    onSelect?.(stock);
     if (navigateOnSelect) {
-      router.push(`/stocks/${stock.symbol}-${stock.exchange}`)
+      router.push(`/stocks/${stock.symbol}-${stock.exchange}`);
     }
-  }
+  };
 
   return (
     <div className={cn("relative", className)}>
@@ -104,6 +108,16 @@ export function SearchForm({ className, onSelect, navigateOnSelect = false }: Se
           )}
         </div>
       )}
+      {debouncedSearchQuery.trim() &&
+        results.length === 0 &&
+        !isLoading &&
+        !error && (
+          <div className="absolute left-0 right-0 top-23 -mx-4 max-h-[50vh] overflow-y-auto rounded-md border bg-background shadow-lg">
+            <div className="flex items-center justify-center p-4 w-full">
+              <div className="text-sm">Stock not found. Please try again.</div>
+            </div>
+          </div>
+        )}
     </div>
-  )
+  );
 }
